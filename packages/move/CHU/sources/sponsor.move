@@ -274,7 +274,7 @@ module chu::sponsor {
     }
 
     // Join an open offer by paying exactly one seat price and mint a Seat NFT.
-    public fun join_offer(
+    public(package) fun join_offer(
         offer: &mut Offer,
         payment: coin::Coin<SUI>,
         clock: &clock::Clock,
@@ -285,7 +285,7 @@ module chu::sponsor {
 
     // Test helper to join an offer at a given timestamp.
     #[test_only]
-    public fun join_offer_for_testing(
+    public(package) fun join_offer_for_testing(
         offer: &mut Offer,
         payment: coin::Coin<SUI>,
         now_ms: u64,
@@ -333,6 +333,29 @@ module chu::sponsor {
 
         let order_hash = copy_u8_vector(&offer.order_hash);
         seat_nft::mint(object::id(offer), order_hash, ctx)
+    }
+
+    public(package) fun is_member(offer: &Offer, member: address): bool {
+        let len = vector::length(&offer.members);
+        let mut i = 0;
+        let mut found = false;
+        while (i < len) {
+            if (*vector::borrow(&offer.members, i) == member) {
+                found = true;
+                i = len;
+            } else {
+                i = i + 1;
+            };
+        };
+        found
+    }
+
+    public(package) fun seat_cap(offer: &Offer): u64 {
+        offer.seat_cap
+    }
+
+    public(package) fun seats_sold(offer: &Offer): u64 {
+        offer.seats_sold
     }
 
     // Clone a vector<u8> without relying on std::vector copy APIs.
