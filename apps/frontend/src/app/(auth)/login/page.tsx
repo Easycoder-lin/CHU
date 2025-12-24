@@ -4,16 +4,16 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, LogIn } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
-import { useOffers } from "@/context/offers-context"
+import { useMember } from "@/features/member/hooks/use-member"
 import { WalletButton } from "@/components/shared/wallet-button"
 import { ServiceAccessCard } from "@/features/auth/components/service-access-card"
 
 export default function LoginPage() {
     const router = useRouter()
     const { walletConnected } = useAuth()
-    const { getUserJoinedOffers } = useOffers()
+    const { subscriptions } = useMember()
 
-    const offers = getUserJoinedOffers()
+    const offers = subscriptions
     // Filter to only show offers with credentials
     const accessibleOffers = offers.filter(
         (o) =>

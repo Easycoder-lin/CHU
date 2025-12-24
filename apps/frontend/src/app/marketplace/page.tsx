@@ -4,10 +4,10 @@ import React, { useState } from "react"
 import { Navbar } from "@/components/shared/navbar"
 import { Sidebar } from "@/features/marketplace/components/sidebar"
 import { OfferGrid } from "@/features/marketplace/components/offer-grid"
-import { useOffers } from "@/context/offers-context"
+import { useMarket } from "@/features/marketplace/hooks/use-market"
 
 export default function MarketplacePage() {
-    const { offers } = useOffers()
+    const { offers } = useMarket()
     const [activeTab, setActiveTab] = useState("Browse")
     const [selectedServices, setSelectedServices] = useState<string[]>([])
     const [selectedStatus, setSelectedStatus] = useState("all")
