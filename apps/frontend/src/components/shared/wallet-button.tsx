@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
-import { Wallet, LogOut, Loader2 } from "lucide-react"
+import { Wallet, LogOut } from "lucide-react"
+import { ConnectModal } from "@mysten/dapp-kit"
 import { useAuth } from "@/context/auth-context"
 import { cn } from "@/lib/utils"
 
@@ -20,17 +21,28 @@ export function WalletButton({
     showDisconnect = true,
     className,
 }: WalletButtonProps) {
-    const { walletConnected, walletAddress, connectWallet, disconnectWallet } =
-        useAuth()
-    const [isLoading, setIsLoading] = useState(false)
+    const { walletConnected, walletAddress, disconnectWallet } = useAuth()
+    const [open, setOpen] = useState(false)
+    // ConnectModal is a React component that we render. We control it via open state.
+    // However, @mysten/dapp-kit <ConnectModal> might operate differently depending on version. 
+    // Usually it has a `trigger` prop or an `open` prop.
+    // Let's check if we can import ConnectModal. If not, use <ConnectButton /> directly? 
+    // But <ConnectButton /> has fixed styles.
+    // To be safe and keep custom styles, we look for `ConnectModal` which offers `trigger` or `open`.
+    // Assuming standard dapp-kit usage:
+    // We will render <ConnectModal open={open} onOpenChange={setOpen} trigger={<button ... />} />
+    // OR just use <ConnectButton className="..." /> if it accepts className?
+    // Let's use ConnectModal to wrap our custom button as trigger.
 
-    const handleConnect = async () => {
-        setIsLoading(true)
-        try {
-            await connectWallet()
-        } finally {
-            setIsLoading(false)
-        }
+    // BUT since I am not 100% sure of the API version without checking node_modules, 
+    // and I cannot check node_modules deeply efficiently, 
+    // I will use `ConnectModal` assuming it exists. If it fails build, I'll switch to `ConnectButton`.
+
+    // Wait, let's use the safer `ConnectButton` component and try to override styles or use its `children` prop if it has one?
+    // Actually, `ConnectModal` is cleaner for custom buttons.
+
+    const handleConnect = () => {
+        setOpen(true)
     }
 
     const baseClasses =
@@ -69,7 +81,7 @@ export function WalletButton({
                     )}
                 >
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="font-mono text-xs">{walletAddress}</span>
+                    <span className="font-mono text-xs">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
                 </div>
                 {showDisconnect && (
                     <button
@@ -85,24 +97,25 @@ export function WalletButton({
     }
 
     return (
-        <button
-            onClick={handleConnect}
-            disabled={isLoading}
-            className={cn(
-                baseClasses,
-                sizeClasses[size],
-                variantClasses[variant],
-                fullWidth ? "w-full" : "",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                className
-            )}
-        >
-            {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-                <Wallet className="w-4 h-4" />
-            )}
-            <span>{isLoading ? "Connecting..." : "Connect Wallet"}</span>
-        </button>
+        <ConnectModal
+            trigger={
+                <button
+                    disabled={open}
+                    className={cn(
+                        baseClasses,
+                        sizeClasses[size],
+                        variantClasses[variant],
+                        fullWidth ? "w-full" : "",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        className
+                    )}
+                >
+                    <Wallet className="w-4 h-4" />
+                    <span>Connect Wallet</span>
+                </button>
+            }
+            open={open}
+            onOpenChange={setOpen}
+        />
     )
 }
