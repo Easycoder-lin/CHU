@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react"
-import { useOffers } from "@/context/offers-context"
+import { useMember } from "@/features/member/hooks/use-member"
 import { Offer } from "@/types"
 import { OfferStatusBadge } from "@/components/shared/offer-status-badge"
 import { Button } from "@/components/ui/button"
@@ -33,9 +33,8 @@ export function OrderCard({
   offer: Offer
   hasReportedProblem: boolean
 }) {
-  const { reportProblem } = useOffers()
+  const { raiseDispute, isRaisingDispute: isReporting } = useMember()
   const [showCredentials, setShowCredentials] = useState(false)
-  const [isReporting, setIsReporting] = useState(false)
 
   const canViewCredentials =
     offer.status === "CREDENTIAL_SUBMITTED" ||
@@ -50,11 +49,10 @@ export function OrderCard({
     offer.credentials?.unlockAt && new Date() < offer.credentials.unlockAt
 
   const handleReport = async () => {
-    setIsReporting(true)
     try {
-      await reportProblem(offer.id)
-    } finally {
-      setIsReporting(false)
+      await raiseDispute({ offerId: offer.id, reason: "Issue reported by user" })
+    } catch (error) {
+      console.error(error)
     }
   }
 

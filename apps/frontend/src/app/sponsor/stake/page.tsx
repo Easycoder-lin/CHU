@@ -15,22 +15,22 @@ import { useAuth } from "@/context/auth-context"
 import { WalletButton } from "@/components/shared/wallet-button"
 import { Button } from "@/components/ui/button"
 
+import { useSponsor } from "@/features/sponsor/hooks/use-sponsor"
+
 export default function SponsorStakePage() {
     const router = useRouter()
-    const { walletConnected, user, stakeToBecomeSponsors } = useAuth()
-    const [isStaking, setIsStaking] = useState(false)
+    const { walletConnected, user } = useAuth()
+    const { stake, isStaking, isSponsor } = useSponsor()
     const STAKE_AMOUNT = 100 // SUI tokens required
 
     const handleStake = async () => {
-        setIsStaking(true)
         try {
-            await stakeToBecomeSponsors()
-        } finally {
-            setIsStaking(false)
+            await stake(STAKE_AMOUNT)
+            router.push("/sponsor/create")
+        } catch (error) {
+            console.error(error)
         }
     }
-
-    const isSponsor = user?.isSponsor
 
     return (
         <div className="min-h-screen bg-[#FFF8F0]">
@@ -123,11 +123,11 @@ export default function SponsorStakePage() {
                                     You're a Sponsor!
                                 </h3>
                                 <p className="text-gray-600 mb-6">
-                                    Your stake of {user?.stakedAmount} SUI is active. You can now
+                                    Your stake of {user?.stakedAmount || STAKE_AMOUNT} SUI is active. You can now
                                     create offers.
                                 </p>
                                 <Button
-                                    onClick={() => router.push("/sponsor/manage")} // Redirect to manage instead of create directly? Page flow says create in original but manage seems better hub
+                                    onClick={() => router.push("/sponsor/create")}
                                     className="inline-flex items-center gap-2 px-6 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300 hover:-translate-y-0.5 transition-all"
                                 >
                                     Create Your First Offer

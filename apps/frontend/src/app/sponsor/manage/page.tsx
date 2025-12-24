@@ -4,16 +4,14 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
-import { useOffers } from "@/context/offers-context"
+import { useSponsor } from "@/features/sponsor/hooks/use-sponsor"
 import { OfferManageCard } from "@/features/sponsor/components/offer-manage-card"
 import { Button } from "@/components/ui/button"
 
 export default function SponsorManagePage() {
     const router = useRouter()
     const { user, walletConnected } = useAuth()
-    const { getUserCreatedOffers } = useOffers()
-
-    const offers = getUserCreatedOffers()
+    const { myOffers: offers } = useSponsor()
 
     if (!walletConnected || !user?.isSponsor) {
         return (

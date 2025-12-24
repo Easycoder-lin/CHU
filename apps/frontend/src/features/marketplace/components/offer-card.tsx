@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { Users } from "lucide-react"
 import { Offer } from "@/types"
-import { useOffers } from "@/context/offers-context"
+import { useMember } from "@/features/member/hooks/use-member"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -50,7 +50,7 @@ const SERVICE_CONFIG: Record<
 }
 
 export function OfferCard({ offer }: OfferCardProps) {
-    const { joinedOffers } = useOffers()
+    const { subscriptions } = useMember()
     const [showJoinModal, setShowJoinModal] = useState(false)
 
     const config =
@@ -66,7 +66,7 @@ export function OfferCard({ offer }: OfferCardProps) {
         offer.sponsorAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Unknown"
 
     // Check if user already joined this offer
-    const alreadyJoined = joinedOffers.some((jo) => jo.offerId === offer.id)
+    const alreadyJoined = subscriptions.some((sub) => sub.id === offer.id)
 
     const handleJoinClick = () => {
         setShowJoinModal(true)

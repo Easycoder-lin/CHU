@@ -35,10 +35,25 @@ export const useMember = () => {
         enabled: !!account?.address,
     });
 
+    const raiseDisputeMutation = useMutation({
+        mutationFn: async ({ offerId, reason }: { offerId: string, reason: string }) => {
+            return await service.raiseDispute(offerId, reason, signer);
+        },
+        onSuccess: () => {
+            toast({ title: "Dispute Raised", description: "The sponsor has been notified." });
+            queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
+        },
+        onError: (err) => {
+            toast({ title: "Dispute Failed", description: err.message, variant: "destructive" });
+        }
+    });
+
     return {
         joinOffer: joinOfferMutation.mutateAsync,
         isJoining: joinOfferMutation.isPending,
         subscriptions: mySubscriptionsQuery.data || [],
-        isLoadingSubscriptions: mySubscriptionsQuery.isLoading
+        isLoadingSubscriptions: mySubscriptionsQuery.isLoading,
+        raiseDispute: raiseDisputeMutation.mutateAsync,
+        isRaisingDispute: raiseDisputeMutation.isPending
     };
 }

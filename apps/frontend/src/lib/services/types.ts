@@ -6,6 +6,9 @@ export interface CreateOfferParams {
     totalSeats: number;
     pricePerSeat: number;
     period: 'mo' | 'yr';
+    title?: string;
+    description?: string;
+    tags?: string[];
 }
 
 // 定義一個通用的 Signer 介面，兼容 dApp Kit 的 signAndExecuteTransaction

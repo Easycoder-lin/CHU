@@ -4,16 +4,14 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
-import { useOffers } from "@/context/offers-context"
+import { useMember } from "@/features/member/hooks/use-member"
 import { OrderCard } from "@/features/member/components/order-card"
 import { Button } from "@/components/ui/button"
 
 export default function MemberOrdersPage() {
   const router = useRouter()
   const { walletConnected } = useAuth()
-  const { getUserJoinedOffers, joinedOffers } = useOffers()
-
-  const offers = getUserJoinedOffers()
+  const { subscriptions: offers } = useMember()
 
   return (
     <div className="min-h-screen bg-[#FFF8F0]">
@@ -78,14 +76,11 @@ export default function MemberOrdersPage() {
         ) : (
           <div className="space-y-6">
             {offers.map((offer) => {
-              const joinedOffer = joinedOffers.find(
-                (jo) => jo.offerId === offer.id
-              )
               return (
                 <OrderCard
                   key={offer.id}
                   offer={offer}
-                  hasReportedProblem={joinedOffer?.hasReportedProblem || false}
+                  hasReportedProblem={false} // TODO: Add logic to check reported problem status from member service
                 />
               )
             })}

@@ -9,14 +9,6 @@ import {
     Key,
     DollarSign,
 } from "lucide-react"
-import { useOffers } from "@/context/offers-context"
-import { Offer } from "@/types"
-import { OfferStatusBadge } from "@/components/shared/offer-status-badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
 
 function getServiceIcon(service: string): string {
     const icons: Record<string, string> = {
@@ -29,35 +21,40 @@ function getServiceIcon(service: string): string {
     }
     return icons[service] || "📱"
 }
+import { useSponsor } from "@/features/sponsor/hooks/use-sponsor"
+import { Offer } from "@/types"
+import { OfferStatusBadge } from "@/components/shared/offer-status-badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 
 export function OfferManageCard({ offer }: { offer: Offer }) {
-    const { submitCredentials, withdrawFunds } = useOffers()
+    const { submitCredentials, withdraw, isSubmittingCredentials: isSubmitting, isWithdrawing } = useSponsor()
     const [showCredentialForm, setShowCredentialForm] = useState(false)
     const [credentials, setCredentials] = useState({
         username: "",
         password: "",
     })
     const [confirmed, setConfirmed] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isWithdrawing, setIsWithdrawing] = useState(false)
 
     const handleSubmitCredentials = async () => {
         if (!confirmed || !credentials.username || !credentials.password) return
-        setIsSubmitting(true)
+
         try {
-            await submitCredentials(offer.id, credentials.username, credentials.password)
+            await submitCredentials({ offerId: offer.id, credentials: { username: credentials.username, password: credentials.password } })
             setShowCredentialForm(false)
-        } finally {
-            setIsSubmitting(false)
+        } catch (error) {
+            console.error(error)
         }
     }
 
     const handleWithdraw = async () => {
-        setIsWithdrawing(true)
         try {
-            await withdrawFunds(offer.id)
-        } finally {
-            setIsWithdrawing(false)
+            await withdraw(offer.id)
+        } catch (error) {
+            console.error(error)
         }
     }
 

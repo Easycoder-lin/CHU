@@ -93,8 +93,8 @@ export class MockSponsorService implements ISponsorService {
         const newOffer: Offer = {
             id: "offer-" + randomId(),
             service: params.service,
-            title: `${params.service} ${params.period} Plan`,
-            description: "Freshly created offer.",
+            title: params.title || `${params.service} ${params.period} Plan`,
+            description: params.description || "Freshly created offer.",
             totalSeats: params.totalSeats,
             takenSeats: 0,
             price: params.pricePerSeat,
@@ -107,7 +107,7 @@ export class MockSponsorService implements ISponsorService {
             createdAt: new Date(),
             credentialDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
             members: [],
-            tags: ["New"]
+            tags: params.tags || ["New"]
         };
         db.addOffer(newOffer);
         return "0xMockTxDigest_Publish_" + randomId();

@@ -5,7 +5,7 @@ import { createNetworkConfig, SuiClientProvider, WalletProvider } from "@mysten/
 import { getFullnodeUrl } from "@mysten/sui/client"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AuthProvider } from "@/context/auth-context"
-import { OffersProvider } from "@/context/offers-context"
+
 
 import "@mysten/dapp-kit/dist/index.css"
 import { Toaster } from "@/components/ui/toaster"
@@ -27,10 +27,8 @@ export function Providers({ children }: { children: ReactNode }) {
                 <WalletProvider>
                     <AuthProvider>
 
-                        <OffersProvider>
-                            {children}
-                            <Toaster />
-                        </OffersProvider>
+                        {children}
+                        <Toaster />
 
                     </AuthProvider>
                 </WalletProvider>

@@ -15,9 +15,7 @@ export default function LandingPage() {
     setMode(mode)
     switch (mode) {
       case "sponsor":
-        // router.push("/sponsor/stake") 
-        // For now, redirect to dashboard or login, since pages aren't migrated yet
-        router.push("/login")
+        router.push("/sponsor/stake")
         break
       case "member":
         router.push("/marketplace")

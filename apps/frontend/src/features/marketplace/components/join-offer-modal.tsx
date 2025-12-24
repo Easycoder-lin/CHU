@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { Wallet, Loader2, CreditCard, CheckCircle2 } from "lucide-react"
 import { Offer } from "@/types"
 import { useAuth } from "@/context/auth-context"
-import { useOffers } from "@/context/offers-context"
+import { useMember } from "@/features/member/hooks/use-member"
 import { Button } from "@/components/ui/button"
 
 interface JoinOfferModalProps {
@@ -19,7 +19,7 @@ export function JoinOfferModal({
     onSuccess,
 }: JoinOfferModalProps) {
     const { connectWallet, walletConnected } = useAuth()
-    const { joinOffer } = useOffers()
+    const { joinOffer, isJoining } = useMember()
     const [paymentStep, setPaymentStep] = useState<
         "connect" | "payment" | "success"
     >(walletConnected ? "payment" : "connect")
@@ -40,7 +40,7 @@ export function JoinOfferModal({
         try {
             // Simulate payment processing
             await new Promise((resolve) => setTimeout(resolve, 2000))
-            await joinOffer(offer.id)
+            await joinOffer({ offerId: offer.id, amount: offer.price })
             setPaymentStep("success")
             // Auto-close modal after showing success
             setTimeout(() => {

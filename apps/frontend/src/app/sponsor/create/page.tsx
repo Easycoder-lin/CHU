@@ -13,7 +13,7 @@ import {
     Loader2,
 } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
-import { useOffers } from "@/context/offers-context"
+import { useSponsor } from "@/features/sponsor/hooks/use-sponsor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,7 +37,7 @@ const SERVICES: {
 export default function SponsorCreateOfferPage() {
     const router = useRouter()
     const { user, walletConnected } = useAuth()
-    const { createOffer } = useOffers()
+    const { publishOffer, isPublishing } = useSponsor()
 
     const [formData, setFormData] = useState({
         service: "Netflix" as ServiceType,
@@ -47,7 +47,7 @@ export default function SponsorCreateOfferPage() {
         price: 5,
         period: "mo" as "mo" | "yr",
     })
-    const [isSubmitting, setIsSubmitting] = useState(false)
+
 
     const now = new Date()
     const credentialDeadline = new Date(now.getTime() + 86400000) // +24 hours
@@ -55,16 +55,20 @@ export default function SponsorCreateOfferPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!walletConnected || !user?.isSponsor) return
-        setIsSubmitting(true)
+
         try {
-            await createOffer({
-                ...formData,
+            await publishOffer({
+                service: formData.service,
+                totalSeats: formData.totalSeats,
+                pricePerSeat: formData.price,
+                period: formData.period,
                 title: formData.title || `${formData.service} Subscription`,
-                tags: [formData.period === "mo" ? "Monthly" : "Annual"],
+                description: formData.description,
+                tags: [formData.period === 'mo' ? 'Monthly' : 'Annual']
             })
             router.push("/sponsor/manage")
-        } finally {
-            setIsSubmitting(false)
+        } catch (error) {
+            console.error(error)
         }
     }
 
@@ -318,10 +322,10 @@ export default function SponsorCreateOfferPage() {
                     {/* Submit Button */}
                     <Button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isPublishing}
                         className="w-full py-4 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold text-lg shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2"
                     >
-                        {isSubmitting ? (
+                        {isPublishing ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
                                 Publishing...
