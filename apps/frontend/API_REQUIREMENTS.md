@@ -1,6 +1,6 @@
 # ShareMarket API & Smart Contract Requirements
 
-This document outlines the requirements for the Smart Contract and Backend (Indexer) teams to support the ShareMarket frontend application.
+This document outlines the requirements for the Smart Contract, Backend (GraphQL), and TEE (Trusted Execution Environment) teams to support the ShareMarket frontend application.
 
 ## 1. Smart Contract Requirements
 
@@ -27,15 +27,15 @@ The frontend expects a Move package that provides the following public entry fun
     *   `total_seats`: `u8`
     *   `period`: `u8` (0 = Monthly, 1 = Annual)
     *   `tags`: `vector<String>`
-*   **Effect**: Creates a shared `Offer` object.
+*   **Effect**: Creates a shared `Offer` object with status `LISTED`.
 
-#### 3. Submit Credentials
-*   **Function**: `submit_credentials`
-*   **Description**: Sponsor submits the account credentials after the offer is fully booked.
+#### 3. Submit Credentials (via TEE Flow)
+*   **Function**: `submit_credential_proof` (Called by TEE or Sponsor with TEE Proof)
+*   **Description**: Updates the offer status after TEE has verified and stored the credentials.
 *   **Arguments**:
     *   `sponsor_cap`: `&SponsorCap`
     *   `offer`: `&mut Offer`
-    *   `encrypted_credentials`: `String` (or `vector<u8>`)
+    *   `tee_attestation`: `vector<u8>` (Proof that TEE holds the valid credentials)
 *   **Effect**: Updates `Offer` status to `CREDENTIAL_SUBMITTED`, starts the 3-day verification timer.
 
 #### 4. Withdraw Funds
@@ -67,154 +67,149 @@ The frontend expects a Move package that provides the following public entry fun
 
 ---
 
-## 2. Data Structure Requirements (On-Chain Objects)
+## 2. TEE (Trusted Execution Environment) Requirements
 
-The frontend needs to query these objects. Please ensure they have public fields or getter functions.
+The TEE acts as a secure middleware to handle sensitive credential data so it is never exposed on-chain in plain text.
 
-### Offer Object
-```rust
-struct Offer has key, store {
-    id: UID,
-    sponsor: address,
-    service_type: String,
-    title: String,
-    description: String,
-    price_per_seat: u64,
-    total_seats: u8,
-    taken_seats: u8,
-    status: u8, // 0: LISTED, 1: FULL, 2: CREDENTIALS_SUBMITTED, 3: DISPUTE, 4: CLOSED
-    credentials: Option<String>, // Encrypted
-    credential_deadline: u64,
-    created_at: u64,
-}
-```
+### API Endpoints (TEE Server)
 
-### User/Sponsor State
-*   Need a way to check `is_sponsor(address)` efficiently.
-*   **Preferred**: A `SponsorCap` object owned by the user, which we can find via `client.getOwnedObjects`.
+#### 1. `POST /api/tee/encrypt-credentials`
+*   **Caller**: Sponsor Frontend
+*   **Input**:
+    *   `offerId`: String
+    *   `username`: String
+    *   `password`: String
+*   **Process**:
+    *   TEE verifies `offerId` exists and caller is owner.
+    *   TEE encrypts and stores credentials in its secure enclave.
+    *   TEE generates an `attestation` signature.
+*   **Output**: `attestation` (to be submitted on-chain).
+
+#### 2. `POST /api/tee/retrieve-credentials`
+*   **Caller**: Member Frontend
+*   **Input**:
+    *   `offerId`: String
+    *   `seatId`: String (Proof of purchase)
+    *   `signature`: User signature verifying ownership of `seatId`
+*   **Process**:
+    *   TEE validates `seatId` is valid on-chain and belongs to caller.
+    *   TEE decrypts credentials.
+*   **Output**: `{ username, password }` (Sent over secure HTTPS/TLS)
 
 ---
 
-## 3. Backend / Indexer Requirements
+## 3. Backend / GraphQL Requirements
 
-To avoid slow client-side iteration over on-chain objects, we request the following query capabilities (via SuiIndexer or custom API).
+We will implement a custom GraphQL API (using Sui GraphQL or similar) to replace standard indexing.
 
 ### Queries
-1.  **`getMarketOffers()`**:
-    *   Return all `Offer` objects where `status == LISTED`.
-    *   Support pagination (cursor/limit).
-2.  **`getSponsorOffers(address)`**:
-    *   Return all `Offer` objects created by a specific sponsor address.
-3.  **`getMemberSubscriptions(address)`**:
-    *   Return all `Offer` objects joined by a specific member address (or via `Seat` objects owned by the member).
+
+#### 1. `query MarketOffers`
+Fetch all available offers for the marketplace.
+```graphql
+query MarketOffers($limit: Int!, $cursor: String, $service: String) {
+  offers(
+    first: $limit
+    after: $cursor
+    filter: {
+      status: LISTED
+      service: $service
+    }
+    orderBy: { createdAt: DESC }
+  ) {
+    edges {
+      node {
+        id
+        title
+        description
+        price
+        seatsAvailable
+        serviceType
+        sponsorAddress
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+```
+
+#### 2. `query MyActivity`
+Fetch a user's sponsored offers and joined subscriptions.
+```graphql
+query MyActivity($address: String!) {
+  sponsorOffers: offers(filter: { sponsor: $address }) {
+    nodes {
+      id
+      status
+      takenSeats
+      totalSeats
+    }
+  }
+  memberSubscriptions: seats(filter: { owner: $address }) {
+    nodes {
+      offer {
+        id
+        title
+        status
+        credentialsEncrypted
+      }
+    }
+  }
+}
+```
 
 ---
 
 ## 4. Visual Diagrams
 
-### A. Core Workflow (Sequence Diagram)
-Shows the interaction from Sponsor creation to Member joining and final Settlement.
+### A. Core Workflow (Sequence Diagram) WITH TEE
 
 ```mermaid
 sequenceDiagram
     participant Sponsor
     participant Frontend
+    participant TEE
     participant Contract
     participant Member
 
     %% Sponsor Flow
-    Sponsor->>Frontend: Click "Stake & Become Sponsor"
-    Frontend->>Contract: stake(100 SUI)
-    Contract-->>Sponsor: SponsorCap Created
-    
     Sponsor->>Frontend: Create "Netflix" Offer
-    Frontend->>Contract: publish_offer(details)
-    Contract-->>Contract: Create Shared Offer Object (Status: LISTED)
+    Frontend->>Contract: publish_offer()
+    Contract-->>Contract: Status: LISTED
 
     %% Member Flow
-    Member->>Frontend: View Marketplace
-    Frontend->>Contract: getMarketOffers()
-    Member->>Frontend: Click "Join"
+    Member->>Frontend: Join Offer
     Frontend->>Contract: join_offer(payment)
-    Contract-->>Contract: Offer.taken_seats++
-    Contract-->>Member: Receive Seat Object
+    Contract-->>Contract: Status: FULL_PENDING_CREDENTIAL
 
-    %% Fulfillment
-    Note over Contract: When taken_seats == total_seats
-    Contract-->>Contract: Status = FULL_PENDING_CREDENTIAL
-    
+    %% Credential Flow (TEE)
     Sponsor->>Frontend: Submit Credentials
-    Frontend->>Contract: submit_credentials(encrypted_data)
-    Contract-->>Contract: Status = CREDENTIAL_SUBMITTED
-    
+    Frontend->>TEE: POST /encrypt-credentials
+    TEE->>TEE: Encrypt & Store
+    TEE-->>Frontend: Return Attestation
+    Frontend->>Contract: submit_credential_proof(attestation)
+    Contract-->>Contract: Status: CREDENTIAL_SUBMITTED
+
+    %% Member Retrieval
     Member->>Frontend: View Credentials
-    Member->>Frontend: (Verify Access)
-    
-    alt No Issues
-        Note over Contract: After 3 days
-        Contract-->>Contract: Status = RELEASABLE
-        Sponsor->>Frontend: Withdraw Funds
-        Frontend->>Contract: withdraw_funds()
-        Contract-->>Sponsor: Transfer Payment + Stake
-    else Issue Found
-        Member->>Frontend: Raise Dispute
-        Frontend->>Contract: raise_dispute()
-        Contract-->>Contract: Status = DISPUTE_OPEN
-    end
+    Frontend->>TEE: POST /retrieve-credentials
+    TEE->>Contract: Verify Seat Ownership
+    Contract-->>TEE: Valid
+    TEE-->>Frontend: Return {username, password}
 ```
 
 ### B. Offer Lifecycle (State Diagram)
-The valid state transitions for an Offer object.
 
 ```mermaid
 stateDiagram-v2
     [*] --> LISTED
-    LISTED --> LISTED: Member Joins
     LISTED --> FULL_PENDING_CREDENTIAL: All Seats Taken
-    FULL_PENDING_CREDENTIAL --> CREDENTIAL_SUBMITTED: Sponsor Submits Creds
-    CREDENTIAL_SUBMITTED --> RELEASABLE: 3 Days Pass (No Dispute)
-    CREDENTIAL_SUBMITTED --> DISPUTE_OPEN: Member Raises Dispute
-    RELEASABLE --> CLOSED: Sponsor Withdraws
-    DISPUTE_OPEN --> CLOSED: Admin Resolves
+    FULL_PENDING_CREDENTIAL --> CREDENTIAL_SUBMITTED: TEE Attestation Submitted
+    CREDENTIAL_SUBMITTED --> RELEASABLE: 3 Days Pass
+    CREDENTIAL_SUBMITTED --> DISPUTE_OPEN: Member Dispute
+    RELEASABLE --> CLOSED: Withdraw
     CLOSED --> [*]
-```
-
-### C. Class Structure (Class Diagram)
-The expected data entities and methods.
-
-```mermaid
-classDiagram
-    class GlobalStore {
-        +Table&lt;address, bool&gt; sponsors
-        +Balance protocol_fees
-    }
-
-    class SponsorCap {
-        +UID id
-        +address sponsor_address
-        +u64 staked_amount
-    }
-
-    class Offer {
-        +UID id
-        +String service_type
-        +u8 total_seats
-        +u8 taken_seats
-        +u64 price
-        +u8 status
-        +String encrypted_credentials
-        +submit_credentials()
-        +withdraw()
-    }
-
-    class Seat {
-        +UID id
-        +ID offer_id
-        +address member_address
-        +u64 joined_at
-        +raise_dispute()
-    }
-
-    SponsorCap "1" -- "*" Offer : creates >
-    Offer "1" -- "*" Seat : contains >
 ```
