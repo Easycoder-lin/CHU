@@ -29,6 +29,17 @@ module chu::member {
         seat
     }
 
+    // Entry wrapper to join an offer from on-chain transactions.
+    public fun join_offer_entry(
+        offer: &mut sponsor::Offer,
+        payment: coin::Coin<SUI>,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let seat = join_offer(offer, payment, clock, ctx);
+        transfer::public_transfer(seat, tx_context::sender(ctx));
+    }
+
     #[test_only]
     public fun join_offer_for_testing(
         offer: &mut sponsor::Offer,

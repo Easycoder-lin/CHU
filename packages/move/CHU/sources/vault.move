@@ -32,6 +32,16 @@ module chu::vault {
         init_vault_with_admin(admin, ctx, true)
     }
 
+    // Entry wrapper to initialize the platform vault on-chain.
+    public fun init_vault_entry(
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let (vault, cap) = init_vault(ctx);
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(vault, sender);
+        transfer::public_transfer(cap, sender);
+    }
+
     // Test helper to initialize a vault and cap for the sender.
     #[test_only]
     public fun init_vault_for_testing(
@@ -74,6 +84,17 @@ module chu::vault {
         ctx: &mut tx_context::TxContext,
     ): coin::Coin<SUI> {
         withdraw_fees_with_sender(vault, _cap, amount, ctx, true)
+    }
+
+    // Entry wrapper to withdraw fees from the vault.
+    public fun withdraw_fees_entry(
+        vault: &mut PlatformVault,
+        cap: &AdminCap,
+        amount: u64,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let payout = withdraw_fees(vault, cap, amount, ctx);
+        transfer::public_transfer(payout, tx_context::sender(ctx));
     }
 
     // Test helper to withdraw fees and return the coin.

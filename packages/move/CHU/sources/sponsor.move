@@ -142,6 +142,16 @@ module chu::sponsor {
         stake_sponsor_with_time(stake, clock::timestamp_ms(clock), ctx, true)
     }
 
+    // Entry wrapper to stake and mint a sponsor badge on-chain.
+    public fun stake_sponsor_entry(
+        stake: coin::Coin<SUI>,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let badge = stake_sponsor(stake, clock, ctx);
+        transfer::public_transfer(badge, tx_context::sender(ctx));
+    }
+
     // Test helper to mint a sponsor badge at a given timestamp.
     #[test_only]
     public fun stake_sponsor_for_testing(
@@ -199,6 +209,30 @@ module chu::sponsor {
             ctx,
             true,
         )
+    }
+
+    // Entry wrapper to create an offer on-chain.
+    public fun create_offer_entry(
+        badge: &mut SponsorBadge,
+        order_hash: vector<u8>,
+        seat_cap: u64,
+        price_per_seat: u64,
+        platform_fee_bps: u64,
+        stake_to_lock: u64,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let offer = create_offer(
+            badge,
+            order_hash,
+            seat_cap,
+            price_per_seat,
+            platform_fee_bps,
+            stake_to_lock,
+            clock,
+            ctx,
+        );
+        transfer::public_transfer(offer, tx_context::sender(ctx));
     }
 
     // Test helper to create an offer at a given timestamp.
@@ -425,6 +459,16 @@ module chu::sponsor {
         )
     }
 
+    // Entry wrapper to submit a TEE receipt on-chain.
+    public fun submit_tee_receipt_entry(
+        offer: &mut Offer,
+        badge: &SponsorBadge,
+        receipt: vector<u8>,
+        clock: &clock::Clock,
+    ) {
+        submit_tee_receipt(offer, badge, receipt, clock)
+    }
+
     // Test helper to submit a receipt at a given timestamp.
     #[test_only]
     public fun submit_tee_receipt_for_testing(
@@ -476,6 +520,22 @@ module chu::sponsor {
         ctx: &mut tx_context::TxContext,
     ): (SlashedPool, vector<SlashClaim>) {
         slash_offer_with_time(offer, clock::timestamp_ms(clock), ctx, true)
+    }
+
+    // Entry wrapper to slash an expired offer on-chain.
+    public fun slash_offer_entry(
+        offer: &mut Offer,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let (pool, mut claims) = slash_offer(offer, clock, ctx);
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(pool, sender);
+        while (!vector::is_empty(&claims)) {
+            let claim = vector::pop_back(&mut claims);
+            transfer::public_transfer(claim, sender);
+        };
+        vector::destroy_empty(claims);
     }
 
     // Test helper to slash an offer at a given timestamp.
@@ -557,6 +617,16 @@ module chu::sponsor {
         claim_slash_with_sender(pool, claim, ctx, true)
     }
 
+    // Entry wrapper to claim a slashed payout on-chain.
+    public fun claim_slash_entry(
+        pool: &mut SlashedPool,
+        claim: &mut SlashClaim,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let payout = claim_slash(pool, claim, ctx);
+        transfer::public_transfer(payout, tx_context::sender(ctx));
+    }
+
     // Test helper to claim a slashed payout and return the coin.
     #[test_only]
     public fun claim_slash_for_testing(
@@ -611,6 +681,21 @@ module chu::sponsor {
             ctx,
             true,
         )
+    }
+
+    // Entry wrapper to settle an offer on-chain.
+    public fun settle_offer_entry(
+        offer: &mut Offer,
+        badge: &SponsorBadge,
+        vault_obj: &mut vault::PlatformVault,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let (payout, stake_return) =
+            settle_offer(offer, badge, vault_obj, clock, ctx);
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(payout, sender);
+        transfer::public_transfer(stake_return, sender);
     }
 
     // Test helper to settle an offer at a given timestamp.

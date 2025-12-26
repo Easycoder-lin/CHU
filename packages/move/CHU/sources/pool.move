@@ -107,6 +107,32 @@ module chu::pool {
         (offer, pool)
     }
 
+    // Entry wrapper to create a pool + offer on-chain.
+    public fun create_pool_for_offer_entry(
+        badge: &mut sponsor::SponsorBadge,
+        order_hash: vector<u8>,
+        seat_cap: u64,
+        price_per_seat: u64,
+        platform_fee_bps: u64,
+        stake_to_lock: u64,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let (offer, pool) = create_pool_for_offer(
+            badge,
+            order_hash,
+            seat_cap,
+            price_per_seat,
+            platform_fee_bps,
+            stake_to_lock,
+            clock,
+            ctx,
+        );
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(pool, sender);
+    }
+
     #[test_only]
     public fun create_pool_for_offer_for_testing(
         badge: &mut sponsor::SponsorBadge,
@@ -183,6 +209,18 @@ module chu::pool {
         seat
     }
 
+    // Entry wrapper to join a pool on-chain.
+    public fun join_pool_entry(
+        pool: &mut Pool,
+        offer: &mut sponsor::Offer,
+        payment: coin::Coin<SUI>,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let seat = join_pool(pool, offer, payment, clock, ctx);
+        transfer::public_transfer(seat, tx_context::sender(ctx));
+    }
+
     #[test_only]
     public fun join_pool_for_testing(
         pool: &mut Pool,
@@ -246,6 +284,14 @@ module chu::pool {
         init_registry_with_event(ctx, true)
     }
 
+    // Entry wrapper to initialize a pool registry on-chain.
+    public fun init_registry_entry(
+        ctx: &mut tx_context::TxContext,
+    ) {
+        let registry = init_registry(ctx);
+        transfer::public_transfer(registry, tx_context::sender(ctx));
+    }
+
     #[test_only]
     public fun init_registry_for_testing(ctx: &mut tx_context::TxContext): PoolRegistry {
         init_registry_with_event(ctx, false)
@@ -253,6 +299,14 @@ module chu::pool {
 
     public fun register_pool(registry: &mut PoolRegistry, pool: &Pool) {
         register_pool_with_event(registry, pool, true)
+    }
+
+    // Entry wrapper to register a pool on-chain.
+    public fun register_pool_entry(
+        registry: &mut PoolRegistry,
+        pool: &Pool,
+    ) {
+        register_pool(registry, pool)
     }
 
     #[test_only]
