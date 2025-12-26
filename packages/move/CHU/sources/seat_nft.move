@@ -20,6 +20,24 @@ module chu::seat_nft {
         order_hash: vector<u8>,
         ctx: &mut tx_context::TxContext,
     ): SeatNFT {
+        mint_with_event(offer_id, order_hash, ctx, true)
+    }
+
+    #[test_only]
+    public fun mint_for_testing(
+        offer_id: object::ID,
+        order_hash: vector<u8>,
+        ctx: &mut tx_context::TxContext,
+    ): SeatNFT {
+        mint_with_event(offer_id, order_hash, ctx, false)
+    }
+
+    fun mint_with_event(
+        offer_id: object::ID,
+        order_hash: vector<u8>,
+        ctx: &mut tx_context::TxContext,
+        emit_events: bool,
+    ): SeatNFT {
         let owner = tx_context::sender(ctx);
         let order_hash_len = vector::length(&order_hash);
         let nft = SeatNFT {
@@ -28,11 +46,13 @@ module chu::seat_nft {
             owner,
             order_hash,
         };
-        event::emit(SeatMinted {
-            offer_id,
-            owner,
-            order_hash_len,
-        });
+        if (emit_events) {
+            event::emit(SeatMinted {
+                offer_id,
+                owner,
+                order_hash_len,
+            });
+        };
         nft
     }
 }

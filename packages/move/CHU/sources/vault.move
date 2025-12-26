@@ -29,7 +29,7 @@ module chu::vault {
     // Initialize a vault and admin cap for the transaction sender.
     public fun init_vault(ctx: &mut tx_context::TxContext): (PlatformVault, AdminCap) {
         let admin = tx_context::sender(ctx);
-        init_vault_with_admin(admin, ctx)
+        init_vault_with_admin(admin, ctx, true)
     }
 
     // Test helper to initialize a vault and cap for the sender.
@@ -38,23 +38,26 @@ module chu::vault {
         ctx: &mut tx_context::TxContext,
     ): (PlatformVault, AdminCap) {
         let admin = tx_context::sender(ctx);
-        init_vault_with_admin(admin, ctx)
+        init_vault_with_admin(admin, ctx, false)
     }
 
     // Internal helper to initialize a vault for a specific admin.
     fun init_vault_with_admin(
         admin: address,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): (PlatformVault, AdminCap) {
         let vault = PlatformVault {
             id: object::new(ctx),
             fees: balance::zero<SUI>(),
         };
         let cap = AdminCap { id: object::new(ctx) };
-        event::emit(VaultInitialized {
-            vault_id: object::id(&vault),
-            admin,
-        });
+        if (emit_events) {
+            event::emit(VaultInitialized {
+                vault_id: object::id(&vault),
+                admin,
+            });
+        };
         (vault, cap)
     }
 
@@ -70,7 +73,7 @@ module chu::vault {
         amount: u64,
         ctx: &mut tx_context::TxContext,
     ): coin::Coin<SUI> {
-        withdraw_fees_with_sender(vault, _cap, amount, ctx)
+        withdraw_fees_with_sender(vault, _cap, amount, ctx, true)
     }
 
     // Test helper to withdraw fees and return the coin.
@@ -81,7 +84,7 @@ module chu::vault {
         amount: u64,
         ctx: &mut tx_context::TxContext,
     ): coin::Coin<SUI> {
-        withdraw_fees_with_sender(vault, cap, amount, ctx)
+        withdraw_fees_with_sender(vault, cap, amount, ctx, false)
     }
 
     // Internal helper to withdraw fees for the current sender.
@@ -90,16 +93,19 @@ module chu::vault {
         _cap: &AdminCap,
         amount: u64,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): coin::Coin<SUI> {
         let available = balance::value(&vault.fees);
         assert!(amount <= available, EInsufficientFees);
         let payout = balance::split(&mut vault.fees, amount);
         let admin = tx_context::sender(ctx);
-        event::emit(FeesWithdrawn {
-            vault_id: object::id(vault),
-            admin,
-            amount,
-        });
+        if (emit_events) {
+            event::emit(FeesWithdrawn {
+                vault_id: object::id(vault),
+                admin,
+                amount,
+            });
+        };
         coin::from_balance(payout, ctx)
     }
 }

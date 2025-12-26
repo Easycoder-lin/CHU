@@ -25,7 +25,7 @@ module chu::member {
         assert!(!sponsor::is_member(offer, member), EAlreadyMember);
 
         let seat = sponsor::join_offer(offer, payment, clock, ctx);
-        emit_member_joined(offer, member);
+        emit_member_joined(offer, member, true);
         seat
     }
 
@@ -40,16 +40,18 @@ module chu::member {
         assert!(!sponsor::is_member(offer, member), EAlreadyMember);
 
         let seat = sponsor::join_offer_for_testing(offer, payment, now_ms, ctx);
-        emit_member_joined(offer, member);
+        emit_member_joined(offer, member, false);
         seat
     }
 
-    fun emit_member_joined(offer: &sponsor::Offer, member: address) {
-        event::emit(MemberJoined {
-            offer_id: object::id(offer),
-            member,
-            seats_sold: sponsor::seats_sold(offer),
-            seat_cap: sponsor::seat_cap(offer),
-        });
+    fun emit_member_joined(offer: &sponsor::Offer, member: address, emit_events: bool) {
+        if (emit_events) {
+            event::emit(MemberJoined {
+                offer_id: object::id(offer),
+                member,
+                seats_sold: sponsor::seats_sold(offer),
+                seat_cap: sponsor::seat_cap(offer),
+            });
+        };
     }
 }

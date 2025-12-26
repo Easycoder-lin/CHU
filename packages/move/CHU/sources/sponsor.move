@@ -139,7 +139,7 @@ module chu::sponsor {
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): SponsorBadge {
-        stake_sponsor_with_time(stake, clock::timestamp_ms(clock), ctx)
+        stake_sponsor_with_time(stake, clock::timestamp_ms(clock), ctx, true)
     }
 
     // Test helper to mint a sponsor badge at a given timestamp.
@@ -149,7 +149,7 @@ module chu::sponsor {
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): SponsorBadge {
-        stake_sponsor_with_time(stake, now_ms, ctx)
+        stake_sponsor_with_time(stake, now_ms, ctx, false)
     }
 
     // Internal helper to stake with explicit time.
@@ -157,6 +157,7 @@ module chu::sponsor {
         stake: coin::Coin<SUI>,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): SponsorBadge {
         let sponsor = tx_context::sender(ctx);
         let staked = coin::into_balance(stake);
@@ -166,11 +167,13 @@ module chu::sponsor {
             staked,
             created_at_ms: now_ms,
         };
-        event::emit(SponsorStaked {
-            sponsor,
-            amount: balance::value(&badge.staked),
-            created_at_ms: now_ms,
-        });
+        if (emit_events) {
+            event::emit(SponsorStaked {
+                sponsor,
+                amount: balance::value(&badge.staked),
+                created_at_ms: now_ms,
+            });
+        };
         badge
     }
 
@@ -194,6 +197,7 @@ module chu::sponsor {
             stake_to_lock,
             clock::timestamp_ms(clock),
             ctx,
+            true,
         )
     }
 
@@ -218,6 +222,7 @@ module chu::sponsor {
             stake_to_lock,
             now_ms,
             ctx,
+            false,
         )
     }
 
@@ -231,6 +236,7 @@ module chu::sponsor {
         stake_to_lock: u64,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): Offer {
         assert!(badge.sponsor == tx_context::sender(ctx), ENotSponsor);
         assert!(seat_cap > 0, EInvalidSeatCap);
@@ -260,16 +266,18 @@ module chu::sponsor {
             members: vector::empty<address>(),
             tee_receipt: option::none<vector<u8>>(),
         };
-        event::emit(OfferCreated {
-            offer_id: object::id(&offer),
-            sponsor: offer.sponsor,
-            seat_cap,
-            price_per_seat,
-            platform_fee_bps,
-            stake_locked: stake_to_lock,
-            created_at_ms: now_ms,
-            order_hash_len,
-        });
+        if (emit_events) {
+            event::emit(OfferCreated {
+                offer_id: object::id(&offer),
+                sponsor: offer.sponsor,
+                seat_cap,
+                price_per_seat,
+                platform_fee_bps,
+                stake_locked: stake_to_lock,
+                created_at_ms: now_ms,
+                order_hash_len,
+            });
+        };
         offer
     }
 
@@ -291,7 +299,7 @@ module chu::sponsor {
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): seat_nft::SeatNFT {
-        join_offer_with_time(offer, payment, now_ms, ctx)
+        join_offer_with_time_for_testing(offer, payment, now_ms, ctx)
     }
 
     // Internal helper to join an offer with explicit time.
@@ -333,6 +341,36 @@ module chu::sponsor {
 
         let order_hash = copy_u8_vector(&offer.order_hash);
         seat_nft::mint(object::id(offer), order_hash, ctx)
+    }
+
+    #[test_only]
+    fun join_offer_with_time_for_testing(
+        offer: &mut Offer,
+        payment: coin::Coin<SUI>,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+    ): seat_nft::SeatNFT {
+        assert!(offer.status == STATUS_OPEN, EOfferNotOpen);
+        assert!(offer.seats_sold < offer.seat_cap, ESeatCapReached);
+
+        let member = tx_context::sender(ctx);
+        let amount = coin::value(&payment);
+        assert!(amount == offer.price_per_seat, EInvalidPayment);
+        let payment_balance = coin::into_balance(payment);
+        balance::join(&mut offer.escrow_payments, payment_balance);
+
+        offer.seats_sold = offer.seats_sold + 1;
+        vector::push_back(&mut offer.members, member);
+
+        if (offer.seats_sold == offer.seat_cap) {
+            offer.status = STATUS_FULL;
+            offer.full_at_ms = option::some(now_ms);
+            offer.cred_deadline_ms = option::some(now_ms + DAY_MS);
+            offer.settle_after_ms = option::some(now_ms + THREE_DAYS_MS);
+        };
+
+        let order_hash = copy_u8_vector(&offer.order_hash);
+        seat_nft::mint_for_testing(object::id(offer), order_hash, ctx)
     }
 
     public(package) fun is_member(offer: &Offer, member: address): bool {
@@ -378,7 +416,13 @@ module chu::sponsor {
         receipt: vector<u8>,
         clock: &clock::Clock,
     ) {
-        submit_tee_receipt_with_time(offer, badge, receipt, clock::timestamp_ms(clock))
+        submit_tee_receipt_with_time(
+            offer,
+            badge,
+            receipt,
+            clock::timestamp_ms(clock),
+            true,
+        )
     }
 
     // Test helper to submit a receipt at a given timestamp.
@@ -389,7 +433,7 @@ module chu::sponsor {
         receipt: vector<u8>,
         now_ms: u64,
     ) {
-        submit_tee_receipt_with_time(offer, badge, receipt, now_ms)
+        submit_tee_receipt_with_time(offer, badge, receipt, now_ms, false)
     }
 
     // Internal helper to submit receipt with explicit time.
@@ -398,6 +442,7 @@ module chu::sponsor {
         badge: &SponsorBadge,
         receipt: vector<u8>,
         now_ms: u64,
+        emit_events: bool,
     ) {
         assert!(badge.sponsor == offer.sponsor, ENotSponsor);
         assert!(offer.status == STATUS_FULL, EOfferNotFull);
@@ -415,11 +460,13 @@ module chu::sponsor {
         let receipt_len = vector::length(&receipt);
         offer.tee_receipt = option::some(receipt);
         offer.status = STATUS_CREDENTIALS_SUBMITTED;
-        event::emit(CredentialsSubmitted {
-            offer_id: object::id(offer),
-            sponsor: offer.sponsor,
-            receipt_len,
-        });
+        if (emit_events) {
+            event::emit(CredentialsSubmitted {
+                offer_id: object::id(offer),
+                sponsor: offer.sponsor,
+                receipt_len,
+            });
+        };
     }
 
     // Slash sponsor stake after missed deadline and mint claim tickets.
@@ -428,7 +475,7 @@ module chu::sponsor {
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): (SlashedPool, vector<SlashClaim>) {
-        slash_offer_with_time(offer, clock::timestamp_ms(clock), ctx)
+        slash_offer_with_time(offer, clock::timestamp_ms(clock), ctx, true)
     }
 
     // Test helper to slash an offer at a given timestamp.
@@ -438,7 +485,7 @@ module chu::sponsor {
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): (SlashedPool, vector<SlashClaim>) {
-        slash_offer_with_time(offer, now_ms, ctx)
+        slash_offer_with_time(offer, now_ms, ctx, false)
     }
 
     // Internal helper to slash with explicit time.
@@ -446,6 +493,7 @@ module chu::sponsor {
         offer: &mut Offer,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): (SlashedPool, vector<SlashClaim>) {
         assert!(offer.status == STATUS_FULL, EOfferNotFull);
         assert!(option::is_some(&offer.cred_deadline_ms), EOfferNotFull);
@@ -488,12 +536,14 @@ module chu::sponsor {
             i = i + 1;
         };
 
-        event::emit(OfferSlashed {
-            offer_id: object::id(offer),
-            pool_id,
-            per_member,
-            total_members,
-        });
+        if (emit_events) {
+            event::emit(OfferSlashed {
+                offer_id: object::id(offer),
+                pool_id,
+                per_member,
+                total_members,
+            });
+        };
 
         (pool, claims)
     }
@@ -504,7 +554,7 @@ module chu::sponsor {
         claim: &mut SlashClaim,
         ctx: &mut tx_context::TxContext,
     ): coin::Coin<SUI> {
-        claim_slash_with_sender(pool, claim, ctx)
+        claim_slash_with_sender(pool, claim, ctx, true)
     }
 
     // Test helper to claim a slashed payout and return the coin.
@@ -514,7 +564,7 @@ module chu::sponsor {
         claim: &mut SlashClaim,
         ctx: &mut tx_context::TxContext,
     ): coin::Coin<SUI> {
-        claim_slash_with_sender(pool, claim, ctx)
+        claim_slash_with_sender(pool, claim, ctx, false)
     }
 
     // Internal helper to claim a slashed payout for the current sender.
@@ -522,6 +572,7 @@ module chu::sponsor {
         pool: &mut SlashedPool,
         claim: &mut SlashClaim,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): coin::Coin<SUI> {
         let sender = tx_context::sender(ctx);
         assert!(claim.claimer == sender, EClaimNotOwner);
@@ -534,11 +585,13 @@ module chu::sponsor {
         let payout_balance = balance::split(&mut pool.remaining, pool.per_member);
         claim.claimed = true;
 
-        event::emit(SlashClaimed {
-            pool_id: object::id(pool),
-            claimer: sender,
-            amount: pool.per_member,
-        });
+        if (emit_events) {
+            event::emit(SlashClaimed {
+                pool_id: object::id(pool),
+                claimer: sender,
+                amount: pool.per_member,
+            });
+        };
         coin::from_balance(payout_balance, ctx)
     }
 
@@ -550,7 +603,14 @@ module chu::sponsor {
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): (coin::Coin<SUI>, coin::Coin<SUI>) {
-        settle_offer_with_time(offer, badge, vault_obj, clock::timestamp_ms(clock), ctx)
+        settle_offer_with_time(
+            offer,
+            badge,
+            vault_obj,
+            clock::timestamp_ms(clock),
+            ctx,
+            true,
+        )
     }
 
     // Test helper to settle an offer at a given timestamp.
@@ -562,7 +622,7 @@ module chu::sponsor {
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): (coin::Coin<SUI>, coin::Coin<SUI>) {
-        settle_offer_with_time(offer, badge, vault_obj, now_ms, ctx)
+        settle_offer_with_time(offer, badge, vault_obj, now_ms, ctx, false)
     }
 
     // Internal helper to settle with explicit time.
@@ -572,6 +632,7 @@ module chu::sponsor {
         vault_obj: &mut vault::PlatformVault,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
+        emit_events: bool,
     ): (coin::Coin<SUI>, coin::Coin<SUI>) {
         assert!(offer.sponsor == badge.sponsor, ENotSponsor);
         assert!(
@@ -598,12 +659,14 @@ module chu::sponsor {
         let stake_coin = coin::from_balance(stake_balance, ctx);
 
         offer.status = STATUS_SETTLED;
-        event::emit(OfferSettled {
-            offer_id: object::id(offer),
-            payout: total - fee,
-            fee,
-            stake_returned: stake_value,
-        });
+        if (emit_events) {
+            event::emit(OfferSettled {
+                offer_id: object::id(offer),
+                payout: total - fee,
+                fee,
+                stake_returned: stake_value,
+            });
+        };
 
         (payout_coin, stake_coin)
     }
