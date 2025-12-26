@@ -1,9 +1,3 @@
-/*
-/// Module: chu
-module chu::chu;
-*/
-
-// For Move coding conventions, see
-// https://docs.sui.io/concepts/sui-move-concepts/conventions
-
+/// Minimal root module placeholder.
+module chu::chu {}
 
