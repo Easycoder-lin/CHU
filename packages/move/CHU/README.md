@@ -5,8 +5,9 @@ creation, member seat purchases, settlement/slashing, and pool registry logic.
 
 ## Package layout
 
-- `sources/sponsor.move`: Core offer lifecycle (stake sponsor, create offer,
-  join, submit TEE receipt, settle, slash, and claim slashed stake).
+- `sources/sponsor.move`: Sponsor badge staking.
+- `sources/offer.move`: Offer lifecycle (create offer, join, submit TEE receipt,
+  settle, slash, and claim slashed stake).
 - `sources/member.move`: Member-facing helpers for joining offers with duplicate
   member protection.
 - `sources/pool.move`: Pool + registry flow for grouping offers by order hash
@@ -20,21 +21,21 @@ creation, member seat purchases, settlement/slashing, and pool registry logic.
 
 1. Sponsor stakes SUI to mint a `SponsorBadge` (`sponsor::stake_sponsor`).
 2. Sponsor creates an `Offer` with seat cap and price
-   (`sponsor::create_offer` or via `pool::create_pool_for_offer`).
+   (`offer::create_offer` or via `pool::create_pool_for_offer`).
 3. Members join the offer by paying the seat price, receiving a `SeatNFT`
    (`member::join_offer` or `pool::join_pool`).
 4. Sponsor submits a TEE receipt before the credential deadline
-   (`sponsor::submit_tee_receipt`).
+   (`offer::submit_tee_receipt`).
 5. After the settlement delay, sponsor settles to receive payouts and stake
-   (`sponsor::settle_offer`), with platform fees deposited to the vault.
+   (`offer::settle_offer`), with platform fees deposited to the vault.
 
 ## Slash flow (missed credentials)
 
 If the sponsor misses the credential deadline:
 
-- Anyone can call `sponsor::slash_offer`, which creates a `SlashedPool` and
+- Anyone can call `offer::slash_offer`, which creates a `SlashedPool` and
   per-member `SlashClaim` tickets.
-- Members claim their share via `sponsor::claim_slash`.
+- Members claim their share via `offer::claim_slash`.
 
 ## Pool registry
 
@@ -146,7 +147,7 @@ sui client call \
 ```sh
 sui client call \
   --package 0xYOUR_PACKAGE_ID \
-  --module sponsor \
+  --module offer \
   --function create_offer_entry \
   --args <BADGE_ID> 0x0102 1 100000000 500 500000000 0x6 \
   --gas-budget 100000000
@@ -178,7 +179,7 @@ sui client call \
 ```sh
 sui client call \
   --package 0xYOUR_PACKAGE_ID \
-  --module sponsor \
+  --module offer \
   --function submit_tee_receipt_entry \
   --args <OFFER_ID> <BADGE_ID> 0xdeadbeef 0x6 \
   --gas-budget 100000000
@@ -189,7 +190,7 @@ sui client call \
 ```sh
 sui client call \
   --package 0xYOUR_PACKAGE_ID \
-  --module sponsor \
+  --module offer \
   --function settle_offer_entry \
   --args <OFFER_ID> <BADGE_ID> <VAULT_ID> 0x6 \
   --gas-budget 100000000
@@ -200,7 +201,7 @@ sui client call \
 ```sh
 sui client call \
   --package 0xYOUR_PACKAGE_ID \
-  --module sponsor \
+  --module offer \
   --function slash_offer_entry \
   --args <OFFER_ID> 0x6 \
   --gas-budget 100000000
@@ -211,7 +212,7 @@ sui client call \
 ```sh
 sui client call \
   --package 0xYOUR_PACKAGE_ID \
-  --module sponsor \
+  --module offer \
   --function claim_slash_entry \
   --args <SLASH_POOL_ID> <SLASH_CLAIM_ID> \
   --gas-budget 100000000

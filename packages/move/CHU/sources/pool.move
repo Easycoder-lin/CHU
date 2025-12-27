@@ -1,5 +1,6 @@
 module chu::pool {
     use chu::member;
+    use chu::offer;
     use chu::seat_nft;
     use chu::sponsor;
     use sui::clock;
@@ -81,10 +82,10 @@ module chu::pool {
         stake_to_lock: u64,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
-    ): (sponsor::Offer, Pool) {
+    ): (offer::Offer, Pool) {
         let now_ms = clock::timestamp_ms(clock);
         let order_hash_for_offer = copy_u8_vector(&order_hash);
-        let offer = sponsor::create_offer(
+        let offer = offer::create_offer(
             badge,
             order_hash_for_offer,
             seat_cap,
@@ -117,8 +118,8 @@ module chu::pool {
         stake_to_lock: u64,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
-    ) {
-        let (offer, pool) = create_pool_for_offer(
+    ): (offer::Offer, Pool) {
+        create_pool_for_offer(
             badge,
             order_hash,
             seat_cap,
@@ -127,10 +128,7 @@ module chu::pool {
             stake_to_lock,
             clock,
             ctx,
-        );
-        let sender = tx_context::sender(ctx);
-        transfer::public_transfer(offer, sender);
-        transfer::public_transfer(pool, sender);
+        )
     }
 
     #[test_only]
@@ -143,9 +141,9 @@ module chu::pool {
         stake_to_lock: u64,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
-    ): (sponsor::Offer, Pool) {
+    ): (offer::Offer, Pool) {
         let order_hash_for_offer = copy_u8_vector(&order_hash);
-        let offer = sponsor::create_offer_for_testing(
+        let offer = offer::create_offer_for_testing(
             badge,
             order_hash_for_offer,
             seat_cap,
@@ -170,7 +168,7 @@ module chu::pool {
 
     public fun join_pool(
         pool: &mut Pool,
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
@@ -179,13 +177,13 @@ module chu::pool {
         assert!(pool.offer_id == object::id(offer), EOfferMismatch);
         assert!(pool.status == STATUS_OPEN, EPoolNotOpen);
         assert!(pool.seats_sold < pool.seat_cap, ESeatCapReached);
-        assert!(sponsor::seat_cap(offer) == pool.seat_cap, ESeatCapMismatch);
+        assert!(offer::seat_cap(offer) == pool.seat_cap, ESeatCapMismatch);
 
         let member = tx_context::sender(ctx);
         let seat = member::join_offer(offer, payment, clock, ctx);
 
         vector::push_back(&mut pool.members, member);
-        pool.seats_sold = sponsor::seats_sold(offer);
+        pool.seats_sold = offer::seats_sold(offer);
 
         event::emit(PoolJoined {
             pool_id: object::id(pool),
@@ -212,19 +210,18 @@ module chu::pool {
     // Entry wrapper to join a pool on-chain.
     public fun join_pool_entry(
         pool: &mut Pool,
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
-    ) {
-        let seat = join_pool(pool, offer, payment, clock, ctx);
-        transfer::public_transfer(seat, tx_context::sender(ctx));
+    ): seat_nft::SeatNFT {
+        join_pool(pool, offer, payment, clock, ctx)
     }
 
     #[test_only]
     public fun join_pool_for_testing(
         pool: &mut Pool,
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
@@ -232,13 +229,13 @@ module chu::pool {
         assert!(pool.offer_id == object::id(offer), EOfferMismatch);
         assert!(pool.status == STATUS_OPEN, EPoolNotOpen);
         assert!(pool.seats_sold < pool.seat_cap, ESeatCapReached);
-        assert!(sponsor::seat_cap(offer) == pool.seat_cap, ESeatCapMismatch);
+        assert!(offer::seat_cap(offer) == pool.seat_cap, ESeatCapMismatch);
 
         let member = tx_context::sender(ctx);
         let seat = member::join_offer_for_testing(offer, payment, now_ms, ctx);
 
         vector::push_back(&mut pool.members, member);
-        pool.seats_sold = sponsor::seats_sold(offer);
+        pool.seats_sold = offer::seats_sold(offer);
 
         if (pool.seats_sold == pool.seat_cap) {
             pool.status = STATUS_FULL;
@@ -248,7 +245,7 @@ module chu::pool {
     }
 
     fun create_pool_object(
-        offer: &sponsor::Offer,
+        offer: &offer::Offer,
         sponsor_addr: address,
         order_hash: vector<u8>,
         seat_cap: u64,
@@ -287,9 +284,8 @@ module chu::pool {
     // Entry wrapper to initialize a pool registry on-chain.
     public fun init_registry_entry(
         ctx: &mut tx_context::TxContext,
-    ) {
-        let registry = init_registry(ctx);
-        transfer::public_transfer(registry, tx_context::sender(ctx));
+    ): PoolRegistry {
+        init_registry(ctx)
     }
 
     #[test_only]

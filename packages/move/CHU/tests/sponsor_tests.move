@@ -1,6 +1,7 @@
 #[test_only]
 module chu::sponsor_tests {
     use chu::member;
+    use chu::offer;
     use chu::sponsor;
     use chu::vault;
     use sui::coin;
@@ -27,7 +28,7 @@ module chu::sponsor_tests {
         let stake = coin::split(&mut gas, 10_000, ctx);
         let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
 
-        let mut offer = sponsor::create_offer_for_testing(
+        let mut offer = offer::create_offer_for_testing(
             &mut badge,
             sample_order_hash(),
             2,
@@ -51,11 +52,11 @@ module chu::sponsor_tests {
         test_scenario::next_tx(&mut scenario, @0xA);
         let ctx = test_scenario::ctx(&mut scenario);
 
-        sponsor::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
+        offer::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
 
         let (mut vault_obj, cap) = vault::init_vault_for_testing(ctx);
         let settle_time = 2 + THREE_DAYS_MS;
-        let (payout, stake_return) = sponsor::settle_offer_for_testing(
+        let (payout, stake_return) = offer::settle_offer_for_testing(
             &mut offer,
             &badge,
             &mut vault_obj,
@@ -88,7 +89,7 @@ module chu::sponsor_tests {
         let stake = coin::split(&mut gas, 8_000, ctx);
         let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
 
-        let mut offer = sponsor::create_offer_for_testing(
+        let mut offer = offer::create_offer_for_testing(
             &mut badge,
             sample_order_hash(),
             2,
@@ -113,12 +114,12 @@ module chu::sponsor_tests {
         let ctx = test_scenario::ctx(&mut scenario);
 
         let slash_time = 2 + DAY_MS + 1;
-        let (mut pool, mut claims) = sponsor::slash_offer_for_testing(&mut offer, slash_time, ctx);
+        let (mut pool, mut claims) = offer::slash_offer_for_testing(&mut offer, slash_time, ctx);
 
         test_scenario::next_tx(&mut scenario, @0xC);
         let ctx = test_scenario::ctx(&mut scenario);
         let mut claim = vector::pop_back(&mut claims);
-        let payout = sponsor::claim_slash_for_testing(&mut pool, &mut claim, ctx);
+        let payout = offer::claim_slash_for_testing(&mut pool, &mut claim, ctx);
 
         assert!(coin::value(&payout) == 2_000, 2);
 
@@ -147,7 +148,7 @@ module chu::sponsor_tests {
         let stake = coin::split(&mut gas, 2_000, ctx);
         let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
 
-        let mut offer = sponsor::create_offer_for_testing(
+        let mut offer = offer::create_offer_for_testing(
             &mut badge,
             sample_order_hash(),
             2,
@@ -172,7 +173,7 @@ module chu::sponsor_tests {
         test_scenario::end(scenario);
     }
 
-    #[test, expected_failure(abort_code = 8, location = ::chu::sponsor)]
+    #[test, expected_failure(abort_code = 8, location = ::chu::offer)]
     fun test_wrong_price_rejected() {
         let mut scenario = test_scenario::begin(@0xA);
         let ctx = test_scenario::ctx(&mut scenario);
@@ -180,7 +181,7 @@ module chu::sponsor_tests {
         let stake = coin::split(&mut gas, 2_000, ctx);
         let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
 
-        let mut offer = sponsor::create_offer_for_testing(
+        let mut offer = offer::create_offer_for_testing(
             &mut badge,
             sample_order_hash(),
             1,

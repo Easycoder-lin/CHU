@@ -1,5 +1,6 @@
 #[test_only]
 module chu::pool_tests {
+    use chu::offer;
     use chu::pool;
     use chu::sponsor;
     use chu::vault;
@@ -59,10 +60,10 @@ module chu::pool_tests {
 
         test_scenario::next_tx(&mut scenario, @0xA);
         let ctx = test_scenario::ctx(&mut scenario);
-        sponsor::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
+        offer::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
         let (mut vault_obj, cap) = vault::init_vault_for_testing(ctx);
         let settle_time = 2 + THREE_DAYS_MS;
-        let (payout, stake_return) = sponsor::settle_offer_for_testing(
+        let (payout, stake_return) = offer::settle_offer_for_testing(
             &mut offer,
             &badge,
             &mut vault_obj,

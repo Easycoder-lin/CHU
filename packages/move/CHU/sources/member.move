@@ -1,6 +1,6 @@
 module chu::member {
+    use chu::offer;
     use chu::seat_nft;
-    use chu::sponsor;
     use sui::clock;
     use sui::coin;
     use sui::event;
@@ -16,52 +16,51 @@ module chu::member {
     }
 
     public fun join_offer(
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): seat_nft::SeatNFT {
         let member = tx_context::sender(ctx);
-        assert!(!sponsor::is_member(offer, member), EAlreadyMember);
+        assert!(!offer::is_member(offer, member), EAlreadyMember);
 
-        let seat = sponsor::join_offer(offer, payment, clock, ctx);
+        let seat = offer::join_offer(offer, payment, clock, ctx);
         emit_member_joined(offer, member, true);
         seat
     }
 
     // Entry wrapper to join an offer from on-chain transactions.
     public fun join_offer_entry(
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
-    ) {
-        let seat = join_offer(offer, payment, clock, ctx);
-        transfer::public_transfer(seat, tx_context::sender(ctx));
+    ): seat_nft::SeatNFT {
+        join_offer(offer, payment, clock, ctx)
     }
 
     #[test_only]
     public fun join_offer_for_testing(
-        offer: &mut sponsor::Offer,
+        offer: &mut offer::Offer,
         payment: coin::Coin<SUI>,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): seat_nft::SeatNFT {
         let member = tx_context::sender(ctx);
-        assert!(!sponsor::is_member(offer, member), EAlreadyMember);
+        assert!(!offer::is_member(offer, member), EAlreadyMember);
 
-        let seat = sponsor::join_offer_for_testing(offer, payment, now_ms, ctx);
+        let seat = offer::join_offer_for_testing(offer, payment, now_ms, ctx);
         emit_member_joined(offer, member, false);
         seat
     }
 
-    fun emit_member_joined(offer: &sponsor::Offer, member: address, emit_events: bool) {
+    fun emit_member_joined(offer: &offer::Offer, member: address, emit_events: bool) {
         if (emit_events) {
             event::emit(MemberJoined {
                 offer_id: object::id(offer),
                 member,
-                seats_sold: sponsor::seats_sold(offer),
-                seat_cap: sponsor::seat_cap(offer),
+                seats_sold: offer::seats_sold(offer),
+                seat_cap: offer::seat_cap(offer),
             });
         };
     }
