@@ -124,4 +124,78 @@ module chu::pool_tests {
         transfer::public_transfer(seat_two, sender);
         test_scenario::end(scenario);
     }
+
+    #[test]
+    fun test_pool_refund_before_full() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let (mut offer, mut pool_obj) = pool::create_pool_for_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            2,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one =
+            pool::join_pool_for_testing(&mut pool_obj, &mut offer, payment_one, 2, ctx);
+        let refund = pool::refund_seat_for_testing(&mut pool_obj, &mut offer, seat_one, 3, ctx);
+
+        assert!(coin::value(&refund) == 1_000, 0);
+        assert!(pool::seats_sold(&pool_obj) == 0, 1);
+        assert!(offer::seats_sold(&offer) == 0, 2);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(pool_obj, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(refund, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = ::chu::pool::EPoolNotOpen)]
+    fun test_pool_refund_after_full_rejected() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let (mut offer, mut pool_obj) = pool::create_pool_for_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one =
+            pool::join_pool_for_testing(&mut pool_obj, &mut offer, payment_one, 2, ctx);
+        let refund = pool::refund_seat_for_testing(&mut pool_obj, &mut offer, seat_one, 3, ctx);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(pool_obj, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(refund, sender);
+        test_scenario::end(scenario);
+    }
 }

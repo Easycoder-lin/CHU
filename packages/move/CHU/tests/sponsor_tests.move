@@ -2,6 +2,7 @@
 module chu::sponsor_tests {
     use chu::member;
     use chu::offer;
+    use chu::seat_nft;
     use chu::sponsor;
     use chu::vault;
     use sui::coin;
@@ -200,6 +201,249 @@ module chu::sponsor_tests {
         transfer::public_transfer(offer, sender);
         transfer::public_transfer(badge, sender);
         transfer::public_transfer(seat, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_refund_before_full() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            2,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+        let refund = member::refund_seat_for_testing(&mut offer, seat_one, 3, ctx);
+
+        assert!(coin::value(&refund) == 1_000, 0);
+        assert!(offer::seats_sold(&offer) == 0, 1);
+        assert!(!offer::is_member(&offer, @0xB), 2);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(refund, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = ::chu::offer::EOfferNotOpenForRefund)]
+    fun test_refund_after_full_rejected() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+        let refund = member::refund_seat_for_testing(&mut offer, seat_one, 3, ctx);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(refund, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = ::chu::offer::ESeatOwnerMismatch)]
+    fun test_refund_wrong_owner_rejected() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            2,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let mut seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+        seat_nft::set_owner_for_testing(&mut seat_one, @0xC);
+        let refund = member::refund_seat_for_testing(&mut offer, seat_one, 3, ctx);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(refund, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = ::chu::offer::EOfferNotSettled)]
+    fun test_access_proof_rejects_before_settled() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+        offer::prove_access_for_testing(&offer, &seat_one, 3, ctx);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(seat_one, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_access_proof_after_settled() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(50_000, ctx);
+        let stake = coin::split(&mut gas, 10_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            500,
+            5_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+
+        test_scenario::next_tx(&mut scenario, @0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        offer::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
+        let (mut vault_obj, cap) = vault::init_vault_for_testing(ctx);
+        let settle_time = 2 + THREE_DAYS_MS;
+        let (payout, stake_return) = offer::settle_offer_for_testing(
+            &mut offer,
+            &badge,
+            &mut vault_obj,
+            settle_time,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        offer::prove_access_for_testing(&offer, &seat_one, settle_time + 1, ctx);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(vault_obj, sender);
+        transfer::public_transfer(cap, sender);
+        transfer::public_transfer(payout, sender);
+        transfer::public_transfer(stake_return, sender);
+        transfer::public_transfer(seat_one, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = ::chu::offer::EOfferNotOpenForRefund)]
+    fun test_refund_after_settled_rejected() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(50_000, ctx);
+        let stake = coin::split(&mut gas, 10_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            500,
+            5_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+
+        test_scenario::next_tx(&mut scenario, @0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        offer::submit_tee_receipt_for_testing(&mut offer, &badge, sample_order_hash(), 2);
+        let (mut vault_obj, cap) = vault::init_vault_for_testing(ctx);
+        let settle_time = 2 + THREE_DAYS_MS;
+        let (payout, stake_return) = offer::settle_offer_for_testing(
+            &mut offer,
+            &badge,
+            &mut vault_obj,
+            settle_time,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let sender = test_scenario::sender(&scenario);
+        let ctx = test_scenario::ctx(&mut scenario);
+        transfer::public_transfer(payout, sender);
+        transfer::public_transfer(stake_return, sender);
+        let refund = member::refund_seat_for_testing(&mut offer, seat_one, settle_time + 1, ctx);
+
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(vault_obj, sender);
+        transfer::public_transfer(cap, sender);
+        transfer::public_transfer(refund, sender);
         test_scenario::end(scenario);
     }
 }

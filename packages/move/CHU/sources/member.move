@@ -29,6 +29,36 @@ module chu::member {
         seat
     }
 
+    // Refund a seat before the offer is full.
+    public fun refund_seat(
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        offer::refund_seat(offer, seat, clock, ctx)
+    }
+
+    // Entry wrapper to refund a seat on-chain.
+    public fun refund_seat_entry(
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        refund_seat(offer, seat, clock, ctx)
+    }
+
+    #[test_only]
+    public fun refund_seat_for_testing(
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        offer::refund_seat_for_testing(offer, seat, now_ms, ctx)
+    }
+
     // Entry wrapper to join an offer from on-chain transactions.
     public fun join_offer_entry(
         offer: &mut offer::Offer,

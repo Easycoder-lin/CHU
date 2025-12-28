@@ -3,10 +3,13 @@ module chu::pool {
     use chu::offer;
     use chu::seat_nft;
     use chu::sponsor;
+    use sui::address;
     use sui::clock;
     use sui::coin;
     use sui::event;
+    use sui::hash;
     use sui::sui::SUI;
+    use sui::table;
 
     const STATUS_OPEN: u8 = 0;
     const STATUS_FULL: u8 = 1;
@@ -16,6 +19,7 @@ module chu::pool {
     const EOfferMismatch: u64 = 2;
     const ESeatCapMismatch: u64 = 3;
     const EAlreadyRegistered: u64 = 4;
+    const EMemberNotFound: u64 = 5;
 
     public struct Pool has key, store {
         id: object::UID,
@@ -28,14 +32,9 @@ module chu::pool {
         members: vector<address>,
     }
 
-    public struct PoolIndex has copy, drop, store {
-        order_hash: vector<u8>,
-        pool_id: object::ID,
-    }
-
     public struct PoolRegistry has key, store {
         id: object::UID,
-        pools: vector<PoolIndex>,
+        pools: table::Table<address, object::ID>,
     }
 
     public struct PoolCreated has copy, drop, store {
@@ -207,6 +206,52 @@ module chu::pool {
         seat
     }
 
+    public fun refund_seat(
+        pool: &mut Pool,
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        assert!(pool.offer_id == object::id(offer), EOfferMismatch);
+        assert!(pool.status == STATUS_OPEN, EPoolNotOpen);
+        let refund = offer::refund_seat(offer, seat, clock, ctx);
+        let member = tx_context::sender(ctx);
+        assert!(remove_member(pool, member), EMemberNotFound);
+        pool.seats_sold = offer::seats_sold(offer);
+        pool.status = STATUS_OPEN;
+        refund
+    }
+
+    // Entry wrapper to refund a seat in a pool on-chain.
+    public fun refund_seat_entry(
+        pool: &mut Pool,
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        refund_seat(pool, offer, seat, clock, ctx)
+    }
+
+    #[test_only]
+    public fun refund_seat_for_testing(
+        pool: &mut Pool,
+        offer: &mut offer::Offer,
+        seat: seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        assert!(pool.offer_id == object::id(offer), EOfferMismatch);
+        assert!(pool.status == STATUS_OPEN, EPoolNotOpen);
+        let refund = offer::refund_seat_for_testing(offer, seat, now_ms, ctx);
+        let member = tx_context::sender(ctx);
+        assert!(remove_member(pool, member), EMemberNotFound);
+        pool.seats_sold = offer::seats_sold(offer);
+        pool.status = STATUS_OPEN;
+        refund
+    }
+
     // Entry wrapper to join a pool on-chain.
     public fun join_pool_entry(
         pool: &mut Pool,
@@ -316,7 +361,7 @@ module chu::pool {
     ): PoolRegistry {
         let registry = PoolRegistry {
             id: object::new(ctx),
-            pools: vector::empty<PoolIndex>(),
+            pools: table::new<address, object::ID>(ctx),
         };
         if (emit_events) {
             let admin = tx_context::sender(ctx);
@@ -333,16 +378,9 @@ module chu::pool {
         pool: &Pool,
         emit_events: bool,
     ) {
-        let existing = find_pool_id(registry, &pool.order_hash);
-        assert!(option::is_none(&existing), EAlreadyRegistered);
-        let order_hash_copy = copy_u8_vector(&pool.order_hash);
-        vector::push_back(
-            &mut registry.pools,
-            PoolIndex {
-                order_hash: order_hash_copy,
-                pool_id: object::id(pool),
-            },
-        );
+        let key = order_hash_key(&pool.order_hash);
+        assert!(!table::contains(&registry.pools, key), EAlreadyRegistered);
+        table::add(&mut registry.pools, key, object::id(pool));
         if (emit_events) {
             let order_hash_event = copy_u8_vector(&pool.order_hash);
             event::emit(PoolRegistered {
@@ -357,7 +395,12 @@ module chu::pool {
         registry: &PoolRegistry,
         order_hash: &vector<u8>,
     ): option::Option<object::ID> {
-        find_pool_id(registry, order_hash)
+        let key = order_hash_key(order_hash);
+        if (table::contains(&registry.pools, key)) {
+            option::some(*table::borrow(&registry.pools, key))
+        } else {
+            option::none<object::ID>()
+        }
     }
 
     public fun seat_cap(pool: &Pool): u64 {
@@ -372,35 +415,24 @@ module chu::pool {
         pool.status == STATUS_FULL
     }
 
-    fun find_pool_id(
-        registry: &PoolRegistry,
-        order_hash: &vector<u8>,
-    ): option::Option<object::ID> {
-        let len = vector::length(&registry.pools);
+    fun remove_member(pool: &mut Pool, member: address): bool {
+        let len = vector::length(&pool.members);
         let mut i = 0;
         while (i < len) {
-            let entry = vector::borrow(&registry.pools, i);
-            if (eq_u8_vector(&entry.order_hash, order_hash)) {
-                return option::some(entry.pool_id)
+            if (*vector::borrow(&pool.members, i) == member) {
+                if (len == 1) {
+                    vector::pop_back(&mut pool.members);
+                } else {
+                    let last = vector::pop_back(&mut pool.members);
+                    if (i < len - 1) {
+                        *vector::borrow_mut(&mut pool.members, i) = last;
+                    };
+                };
+                return true
             };
             i = i + 1;
         };
-        option::none<object::ID>()
-    }
-
-    fun eq_u8_vector(a: &vector<u8>, b: &vector<u8>): bool {
-        let len = vector::length(a);
-        if (len != vector::length(b)) {
-            return false
-        };
-        let mut i = 0;
-        while (i < len) {
-            if (*vector::borrow(a, i) != *vector::borrow(b, i)) {
-                return false
-            };
-            i = i + 1;
-        };
-        true
+        false
     }
 
     fun copy_u8_vector(input: &vector<u8>): vector<u8> {
@@ -413,5 +445,9 @@ module chu::pool {
             i = i + 1;
         };
         out
+    }
+
+    fun order_hash_key(order_hash: &vector<u8>): address {
+        address::from_bytes(hash::blake2b256(order_hash))
     }
 }

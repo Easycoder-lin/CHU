@@ -37,6 +37,14 @@ module chu::offer {
     const EAlreadyClaimed: u64 = 17;
     const EPoolMismatch: u64 = 18;
     const EInsufficientPool: u64 = 19;
+    const EOfferNotOpenForRefund: u64 = 20;
+    const ESeatOfferMismatch: u64 = 21;
+    const ESeatOrderHashMismatch: u64 = 22;
+    const ESeatOwnerMismatch: u64 = 23;
+    const EMemberNotFound: u64 = 24;
+    const EInsufficientEscrow: u64 = 25;
+    const ESeatUnderflow: u64 = 26;
+    const EOfferNotSettled: u64 = 27;
 
     public struct Offer has key, store {
         id: object::UID,
@@ -119,6 +127,23 @@ module chu::offer {
         payout: u64,
         fee: u64,
         stake_returned: u64,
+    }
+
+    public struct SeatRefunded has copy, drop, store {
+        offer_id: object::ID,
+        order_hash: vector<u8>,
+        member: address,
+        seat_object_id: object::ID,
+        amount: u64,
+        timestamp_ms: u64,
+    }
+
+    public struct ServiceAccessProved has copy, drop, store {
+        offer_id: object::ID,
+        order_hash: vector<u8>,
+        member: address,
+        seat_object_id: object::ID,
+        timestamp_ms: u64,
     }
 
     // Create a new offer and lock sponsor stake.
@@ -363,6 +388,14 @@ module chu::offer {
         offer.seats_sold
     }
 
+    public fun order_hash(offer: &Offer): &vector<u8> {
+        &offer.order_hash
+    }
+
+    public fun is_settled(offer: &Offer): bool {
+        offer.status == STATUS_SETTLED
+    }
+
     // Clone a vector<u8> without relying on std::vector copy APIs.
     fun copy_u8_vector(input: &vector<u8>): vector<u8> {
         let mut out = vector::empty<u8>();
@@ -374,6 +407,170 @@ module chu::offer {
             i = i + 1;
         };
         out
+    }
+
+    // Prove access after the offer has settled without consuming the seat.
+    public fun prove_access(
+        offer: &Offer,
+        seat: &seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &tx_context::TxContext,
+    ) {
+        prove_access_with_time(offer, seat, clock::timestamp_ms(clock), ctx, true)
+    }
+
+    // Entry wrapper to prove access on-chain.
+    public fun prove_access_entry(
+        offer: &Offer,
+        seat: &seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &tx_context::TxContext,
+    ) {
+        prove_access(offer, seat, clock, ctx)
+    }
+
+    #[test_only]
+    public fun prove_access_for_testing(
+        offer: &Offer,
+        seat: &seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &tx_context::TxContext,
+    ) {
+        prove_access_with_time(offer, seat, now_ms, ctx, false)
+    }
+
+    fun prove_access_with_time(
+        offer: &Offer,
+        seat: &seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &tx_context::TxContext,
+        emit_events: bool,
+    ) {
+        assert!(offer.status == STATUS_SETTLED, EOfferNotSettled);
+        let sender = tx_context::sender(ctx);
+        assert!(seat_nft::owner(seat) == sender, ESeatOwnerMismatch);
+        assert!(seat_nft::offer_id(seat) == object::id(offer), ESeatOfferMismatch);
+        assert!(
+            eq_u8_vector(&offer.order_hash, seat_nft::order_hash(seat)),
+            ESeatOrderHashMismatch
+        );
+        if (emit_events) {
+            let order_hash = copy_u8_vector(&offer.order_hash);
+            event::emit(ServiceAccessProved {
+                offer_id: object::id(offer),
+                order_hash,
+                member: sender,
+                seat_object_id: object::id(seat),
+                timestamp_ms: now_ms,
+            });
+        };
+    }
+
+    // Refund a seat before the offer is full by burning the Seat NFT.
+    public fun refund_seat(
+        offer: &mut Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        refund_seat_with_time(offer, seat, clock::timestamp_ms(clock), ctx, true)
+    }
+
+    // Entry wrapper to refund a seat on-chain.
+    public fun refund_seat_entry(
+        offer: &mut Offer,
+        seat: seat_nft::SeatNFT,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        refund_seat(offer, seat, clock, ctx)
+    }
+
+    #[test_only]
+    public fun refund_seat_for_testing(
+        offer: &mut Offer,
+        seat: seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+    ): coin::Coin<SUI> {
+        refund_seat_with_time(offer, seat, now_ms, ctx, false)
+    }
+
+    fun refund_seat_with_time(
+        offer: &mut Offer,
+        seat: seat_nft::SeatNFT,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+        emit_events: bool,
+    ): coin::Coin<SUI> {
+        assert!(offer.status == STATUS_OPEN, EOfferNotOpenForRefund);
+        let member = tx_context::sender(ctx);
+        assert!(seat_nft::owner(&seat) == member, ESeatOwnerMismatch);
+        assert!(seat_nft::offer_id(&seat) == object::id(offer), ESeatOfferMismatch);
+        assert!(
+            eq_u8_vector(&offer.order_hash, seat_nft::order_hash(&seat)),
+            ESeatOrderHashMismatch
+        );
+        assert!(remove_member(offer, member), EMemberNotFound);
+        assert!(offer.seats_sold > 0, ESeatUnderflow);
+        offer.seats_sold = offer.seats_sold - 1;
+
+        let available = balance::value(&offer.escrow_payments);
+        assert!(available >= offer.price_per_seat, EInsufficientEscrow);
+        let refund_balance = balance::split(&mut offer.escrow_payments, offer.price_per_seat);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+
+        let seat_id = object::id(&seat);
+        seat_nft::burn(seat);
+
+        if (emit_events) {
+            let order_hash = copy_u8_vector(&offer.order_hash);
+            event::emit(SeatRefunded {
+                offer_id: object::id(offer),
+                order_hash,
+                member,
+                seat_object_id: seat_id,
+                amount: offer.price_per_seat,
+                timestamp_ms: now_ms,
+            });
+        };
+
+        refund_coin
+    }
+
+    fun remove_member(offer: &mut Offer, member: address): bool {
+        let len = vector::length(&offer.members);
+        let mut i = 0;
+        while (i < len) {
+            if (*vector::borrow(&offer.members, i) == member) {
+                if (len == 1) {
+                    vector::pop_back(&mut offer.members);
+                } else {
+                    let last = vector::pop_back(&mut offer.members);
+                    if (i < len - 1) {
+                        *vector::borrow_mut(&mut offer.members, i) = last;
+                    };
+                };
+                return true
+            };
+            i = i + 1;
+        };
+        false
+    }
+
+    fun eq_u8_vector(a: &vector<u8>, b: &vector<u8>): bool {
+        let len = vector::length(a);
+        if (len != vector::length(b)) {
+            return false
+        };
+        let mut i = 0;
+        while (i < len) {
+            if (*vector::borrow(a, i) != *vector::borrow(b, i)) {
+                return false
+            };
+            i = i + 1;
+        };
+        true
     }
 
     // Submit the TEE receipt within the credential deadline.
