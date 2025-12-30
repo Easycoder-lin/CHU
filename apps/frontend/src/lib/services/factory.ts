@@ -5,12 +5,12 @@ import { MockMemberService, MockSponsorService } from "../mock/services";
 import { SuiMemberService } from "./sui-member";
 import { SuiSponsorService } from "./sui-sponsor";
 
-// 簡單的 Singleton 緩存
+// Simple singleton cache for services
 let sponsorServiceInstance: ISponsorService | null = null;
 let memberServiceInstance: IMemberService | null = null;
 let suiClientInstance: SuiClient | null = null;
 
-// 環境變數控制 (可以在 .env.local 設定 NEXT_PUBLIC_USE_MOCK=true)
+// Environment toggle (set NEXT_PUBLIC_USE_MOCK=true in .env.local to use mocks)
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 function getSuiClient() {

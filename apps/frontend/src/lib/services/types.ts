@@ -11,7 +11,7 @@ export interface CreateOfferParams {
     tags?: string[];
 }
 
-// 定義一個通用的 Signer 介面，兼容 dApp Kit 的 signAndExecuteTransaction
+// Generic signer interface compatible with dApp Kit signAndExecuteTransaction
 export type TransactionSigner = {
     signAndExecuteTransaction: (input: { transaction: any }) => Promise<{ digest: string }>;
 };

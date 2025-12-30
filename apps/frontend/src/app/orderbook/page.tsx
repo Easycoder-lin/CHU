@@ -16,14 +16,14 @@ import { cn } from "@/lib/utils"
 import type { Allocation, MarketSummary, Order, OrderBookSnapshot, OrderSide, ProductId, Trade } from "@/types"
 
 const PRODUCT_OPTIONS: Array<{ id: ProductId; name: string; desc: string; badge: string }> = [
-    { id: "NETFLIX_ANNUAL", name: "Netflix 年度會員", desc: "4K / 多人家庭方案，年度授權", badge: "影音" },
-    { id: "SPOTIFY_ANNUAL", name: "Spotify 年度會員", desc: "家庭音樂方案，年度授權", badge: "音樂" },
-    { id: "YOUTUBE_PREMIUM_ANNUAL", name: "YouTube Premium 年度", desc: "無廣告 + 背景播放", badge: "影音" },
-    { id: "PRIME_VIDEO_ANNUAL", name: "Prime Video 年度", desc: "影集與電影，含會員福利", badge: "影音" },
-    { id: "DISNEY_BUNDLE_ANNUAL", name: "Disney+ Bundle 年度", desc: "Disney+ / Hulu / ESPN+ 同捆", badge: "影音" },
-    { id: "APPLE_ONE_ANNUAL", name: "Apple One 年度", desc: "全家共享 iCloud+ / Music / TV+ / Fitness+", badge: "綜合" },
-    { id: "CHATGPT_ANNUAL", name: "ChatGPT Plus 年度", desc: "AI 助手年費方案", badge: "AI" },
-    { id: "GEMINI_ANNUAL", name: "Gemini Advanced 年度", desc: "搜尋 + AI 助手年費方案", badge: "AI" },
+    { id: "NETFLIX_ANNUAL", name: "Netflix Annual", desc: "4K / family plan, annual", badge: "Streaming" },
+    { id: "SPOTIFY_ANNUAL", name: "Spotify Annual", desc: "Family music plan, annual", badge: "Music" },
+    { id: "YOUTUBE_PREMIUM_ANNUAL", name: "YouTube Premium Annual", desc: "Ad-free + background play", badge: "Streaming" },
+    { id: "PRIME_VIDEO_ANNUAL", name: "Prime Video Annual", desc: "Series, movies, member perks", badge: "Streaming" },
+    { id: "DISNEY_BUNDLE_ANNUAL", name: "Disney+ Bundle Annual", desc: "Disney+ / Hulu / ESPN+ bundle", badge: "Streaming" },
+    { id: "APPLE_ONE_ANNUAL", name: "Apple One Annual", desc: "Family iCloud+ / Music / TV+ / Fitness+", badge: "Bundle" },
+    { id: "CHATGPT_ANNUAL", name: "ChatGPT Plus Annual", desc: "AI assistant annual plan", badge: "AI" },
+    { id: "GEMINI_ANNUAL", name: "Gemini Advanced Annual", desc: "Search + AI assistant annual", badge: "AI" },
 ]
 
 export default function OrderBookPage() {
@@ -91,14 +91,14 @@ export default function OrderBookPage() {
                 fetchTrades(product),
             ])
             setBook(bookRes)
-            // 防呆：只接收當前標的的資料
+            // Guard: only accept data for current product
             setOrders(orderRes.orders.filter((o) => o.product === product))
             setTrades(tradeRes.trades.filter((t) => t.product === product))
         } catch (error) {
             console.error(error)
             toast({
-                title: "載入訂單簿失敗",
-                description: "請確認後端是否已啟動並允許 CORS。",
+                title: "Failed to load order book",
+                description: "Ensure backend is running and CORS is allowed.",
                 variant: "destructive",
             })
         } finally {
@@ -120,8 +120,8 @@ export default function OrderBookPage() {
         e.preventDefault()
         if (!walletConnected) {
             toast({
-                title: "請先連接錢包",
-                description: "買賣前需要連接錢包。",
+                title: "Connect wallet first",
+                description: "You need a wallet connected before trading.",
                 variant: "destructive",
             })
             return
@@ -131,8 +131,8 @@ export default function OrderBookPage() {
         const numericQty = Number(quantity)
         if (Number.isNaN(numericPrice) || Number.isNaN(numericQty) || numericQty <= 0 || numericPrice <= 0) {
             toast({
-                title: "輸入數值有誤",
-                description: "請輸入有效的價格與數量。",
+                title: "Invalid input",
+                description: "Enter a valid price and quantity.",
                 variant: "destructive",
             })
             return
@@ -140,8 +140,8 @@ export default function OrderBookPage() {
 
         if (side === "SELL" && !canSell) {
             toast({
-                title: "只有 Sponsor 可以掛賣單",
-                description: "請切換為 Sponsor 模式或改用買單。",
+                title: "Only sponsors can place asks",
+                description: "Switch to sponsor mode or place a bid instead.",
                 variant: "destructive",
             })
             return
@@ -149,8 +149,8 @@ export default function OrderBookPage() {
 
         if (side === "SELL" && !isSponsor) {
             toast({
-                title: "需要 Sponsor 資格",
-                description: "請先完成質押取得 Sponsor 資格，再嘗試掛賣單。",
+                title: "Sponsor status required",
+                description: "Stake to become a sponsor before placing an ask.",
                 variant: "destructive",
             })
             return
@@ -167,8 +167,8 @@ export default function OrderBookPage() {
                 walletAddress,
             })
             toast({
-                title: side === "BUY" ? "買單已送出" : "賣單已送出",
-                description: "已寫入訂單簿，若價格可成交會即時撮合。",
+                title: side === "BUY" ? "Bid submitted" : "Ask submitted",
+                description: "Added to the order book; it will match immediately if prices cross.",
             })
             setQuantity("1")
             loadData()
@@ -176,8 +176,8 @@ export default function OrderBookPage() {
         } catch (error) {
             console.error(error)
             toast({
-                title: "下單失敗",
-                description: "請確認後端 API 連線或稍後再試。",
+                title: "Order failed",
+                description: "Check backend connectivity or try again later.",
                 variant: "destructive",
             })
         } finally {
@@ -216,19 +216,19 @@ export default function OrderBookPage() {
                     <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                             <ArrowRightLeft className="w-4 h-4" />
-                            選擇標的
+                            Select Product
                         </h2>
-                        <p className="text-sm text-indigo-100/70">先選標的，再查看對應的訂單簿</p>
+                        <p className="text-sm text-indigo-100/70">Pick a product to view its order book.</p>
                     </div>
                     <div className="flex items-center gap-3 mb-4">
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="搜尋服務（Netflix、Spotify、ChatGPT…）"
+                            placeholder="Search services (Netflix, Spotify, ChatGPT…)"
                             className="bg-white/5 border-white/10 text-white placeholder:text-indigo-100/60"
                         />
                         <span className="text-xs text-indigo-100/70">
-                            共 {filteredProducts.length} 個結果
+                            {filteredProducts.length} results
                         </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -253,13 +253,13 @@ export default function OrderBookPage() {
                                         <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-indigo-100">
                                             {opt.badge}
                                         </span>
-                                        {active && <span className="text-xs text-emerald-300">使用中</span>}
+                                        {active && <span className="text-xs text-emerald-300">Active</span>}
                                     </div>
                                     <p className="text-sm font-semibold text-white mt-2">{opt.name}</p>
                                     <p className="text-xs text-indigo-100/70 mt-1">{opt.desc}</p>
                                     {summary && (
                                         <p className="text-[11px] text-indigo-100/80 mt-2">
-                                            最佳買 {formatPrice(summary.bestBid)} / 賣 {formatPrice(summary.bestAsk)}
+                                            Best bid {formatPrice(summary.bestBid)} / ask {formatPrice(summary.bestAsk)}
                                         </p>
                                     )}
                                 </button>
@@ -273,24 +273,23 @@ export default function OrderBookPage() {
                             <div className="space-y-3">
                                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-200 bg-indigo-500/20 px-3 py-1 rounded-full">
                                     <ArrowRightLeft className="w-4 h-4" />
-                                    雙邊 Order Book
+                                    Two-sided Order Book
                                 </p>
                                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                                {selectedProduct.name} — 即時買賣簿
+                                {selectedProduct.name} — Live Order Book
                             </h1>
                             <p className="text-indigo-100/80 max-w-2xl">
-                                Sponsor 可以掛出賣價，Member 可以掛買單。像股票一樣的撮合邏輯：
-                                市價優先、時間優先，交叉價格即刻成交。
+                                Sponsors post asks, members place bids. Price/time priority; crossing prices match immediately.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <MetricCard label="最佳買價" value={formatPrice(bestBid)} tone="buy" />
-                            <MetricCard label="最佳賣價" value={formatPrice(bestAsk)} tone="sell" />
-                            <MetricCard label="價差" value={spread ? `${spread.toFixed(2)} USD` : "--"} tone="neutral" />
-                            <MetricCard label="最新成交" value={book?.lastTrade ? formatPrice(book.lastTrade.price) : "--"} tone="neutral" />
+                            <MetricCard label="Best Bid" value={formatPrice(bestBid)} tone="buy" />
+                            <MetricCard label="Best Ask" value={formatPrice(bestAsk)} tone="sell" />
+                            <MetricCard label="Spread" value={spread ? `${spread.toFixed(2)} USD` : "--"} tone="neutral" />
+                            <MetricCard label="Last Trade" value={book?.lastTrade ? formatPrice(book.lastTrade.price) : "--"} tone="neutral" />
                             {canCross && (
                                 <div className="col-span-2 text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
-                                    可立即成交：最佳買 ≥ 最佳賣，下單會即刻撮合。
+                                    Crossable now: best bid ≥ best ask, orders will match instantly.
                                 </div>
                             )}
                         </div>
@@ -301,9 +300,9 @@ export default function OrderBookPage() {
                     <Card className="lg:col-span-2 border-white/10 bg-white/5 backdrop-blur">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
-                                <CardTitle className="text-xl text-white">訂單簿 (買賣分欄)</CardTitle>
+                                <CardTitle className="text-xl text-white">Order Book (Bids / Asks)</CardTitle>
                                 <CardDescription className="text-indigo-100/80">
-                                    按價格聚合，顏色深淺代表席位量大小。
+                                    Aggregated by price; darker bar = more seats.
                                 </CardDescription>
                             </div>
                             <Button
@@ -314,12 +313,12 @@ export default function OrderBookPage() {
                                 disabled={refreshing}
                             >
                                 <RefreshCw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
-                                重新整理
+                                Refresh
                             </Button>
                         </CardHeader>
                         <CardContent className="grid md:grid-cols-2 gap-4">
                             <OrderSideTable
-                                title="賣單 (Ask)"
+                                title="Asks"
                                 rows={book?.asks ?? []}
                                 side="SELL"
                                 onSelect={(p) => {
@@ -328,7 +327,7 @@ export default function OrderBookPage() {
                                 }}
                             />
                             <OrderSideTable
-                                title="買單 (Bid)"
+                                title="Bids"
                                 rows={book?.bids ?? []}
                                 side="BUY"
                                 onSelect={(p) => {
@@ -346,15 +345,15 @@ export default function OrderBookPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart3 className="w-5 h-5" />
-                                下單
+                                Place Order
                             </CardTitle>
                             <CardDescription className="text-indigo-50/80">
-                                {actor === "SPONSOR" ? "你目前以 Sponsor 身份掛賣單" : "你目前以 Member 身份掛買單"}
+                                {actor === "SPONSOR" ? "You are placing asks as a Sponsor" : "You are bidding as a Member"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-2 mb-3 text-sm text-indigo-100/70">
-                                <span>現價買入/賣出將自動填入最佳價：</span>
+                                <span>Market buy/sell auto-fills the best price:</span>
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
@@ -368,7 +367,7 @@ export default function OrderBookPage() {
                                         }}
                                         disabled={!bestAsk}
                                     >
-                                        現價買入
+                                        Buy at best ask
                                     </Button>
                                     <Button
                                         size="sm"
@@ -382,34 +381,34 @@ export default function OrderBookPage() {
                                         }}
                                         disabled={!bestBid || !canSell || !isSponsor}
                                     >
-                                        現價賣出
+                                        Sell at best bid
                                     </Button>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 mb-4">
-                                <TogglePill active={side === "BUY"} onClick={() => setSide("BUY")} label="買入 (Bid)" tone="buy" />
+                                <TogglePill active={side === "BUY"} onClick={() => setSide("BUY")} label="Buy (Bid)" tone="buy" />
                                 <TogglePill
                                     active={side === "SELL"}
                                     onClick={() => canSell && setSide("SELL")}
-                                    label="賣出 (Ask)"
+                                    label="Sell (Ask)"
                                     tone="sell"
                                     disabled={!canSell}
                                 />
                             </div>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-indigo-50">價格 (USD)</Label>
+                                    <Label className="text-indigo-50">Price (USD)</Label>
                                     <Input
                                         type="number"
                                         step="0.01"
                                         value={price}
                                         onChange={(e) => setPrice(e.target.value)}
                                         className="bg-white/5 border-white/20 text-white"
-                                        placeholder="例如 120"
+                                        placeholder="e.g. 120"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-indigo-50">數量 (席位)</Label>
+                                    <Label className="text-indigo-50">Quantity (seats)</Label>
                                     <Input
                                         type="number"
                                         step="1"
@@ -421,7 +420,7 @@ export default function OrderBookPage() {
                                     />
                                 </div>
                                 <p className="text-sm text-indigo-100/70">
-                                    下單將立即與對手盤成交；未成交部分會保留在訂單簿中，遵循時間優先。
+                                    Orders cross immediately if prices match; remainder stays in the book (price/time priority).
                                 </p>
                                 <Button
                                     type="submit"
@@ -433,7 +432,7 @@ export default function OrderBookPage() {
                                     )}
                                     disabled={loading}
                                 >
-                                    {loading ? "送出中..." : side === "BUY" ? "送出買單" : "送出售單"}
+                                    {loading ? "Submitting..." : side === "BUY" ? "Submit bid" : "Submit ask"}
                                 </Button>
                             </form>
                         </CardContent>
@@ -445,12 +444,12 @@ export default function OrderBookPage() {
                         <CardHeader>
                             <CardTitle className="text-white flex items-center gap-2">
                                 <ArrowDownUp className="w-5 h-5" />
-                                最新成交
+                                Recent Trades
                             </CardTitle>
-                            <CardDescription className="text-indigo-100/80">最近 6 筆成交紀錄</CardDescription>
+                            <CardDescription className="text-indigo-100/80">Latest 6 fills</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {recentTrades.length === 0 && <p className="text-sm text-indigo-100/70">尚無成交。</p>}
+                            {recentTrades.length === 0 && <p className="text-sm text-indigo-100/70">No trades yet.</p>}
                             {recentTrades.map((trade) => (
                                 <div
                                     key={trade.id}
@@ -458,7 +457,7 @@ export default function OrderBookPage() {
                                 >
                                     <div>
                                         <p className="text-sm text-indigo-50">
-                                            {formatPrice(trade.price)} · {trade.quantity} 席
+                                            {formatPrice(trade.price)} · {trade.quantity} seats
                                         </p>
                                         <p className="text-xs text-indigo-200/70">
                                             {new Date(trade.createdAt).toLocaleString()}
@@ -474,13 +473,13 @@ export default function OrderBookPage() {
 
                     <Card className="border-white/10 bg-white/5 backdrop-blur">
                         <CardHeader>
-                            <CardTitle className="text-white">掛單佇列</CardTitle>
+                            <CardTitle className="text-white">Open Orders Queue</CardTitle>
                             <CardDescription className="text-indigo-100/80">
-                                未完成或部分成交的訂單（顯示最新 6 筆）
+                                Open or partial orders (latest 6)
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {openOrders.length === 0 && <p className="text-sm text-indigo-100/70">沒有未完成的掛單。</p>}
+                            {openOrders.length === 0 && <p className="text-sm text-indigo-100/70">No open orders.</p>}
                             {openOrders.map((order) => {
                                 const isMine = walletAddress && order.walletAddress === walletAddress
                                 return (
@@ -491,19 +490,19 @@ export default function OrderBookPage() {
                                         <div>
                                             <p className="text-sm font-semibold">
                                                 <span className={order.side === "BUY" ? "text-emerald-400" : "text-rose-400"}>
-                                                    {order.side === "BUY" ? "買" : "賣"}
+                                                    {order.side === "BUY" ? "Bid" : "Ask"}
                                                 </span>
                                                 {" · "}
-                                                {formatPrice(order.price)} · {order.remaining} / {order.quantity} 席
+                                                {formatPrice(order.price)} · {order.remaining} / {order.quantity} seats
                                             </p>
                                             <p className="text-xs text-indigo-200/70">
                                                 {order.actor} · {new Date(order.createdAt).toLocaleString()}
-                                                {isMine && " · 我的掛單"}
+                                                {isMine && " · my order"}
                                             </p>
                                         </div>
-                                        {/* 佇列不允許取消，僅顯示狀態 */}
+                                        {/* Queue view is read-only; no cancel here */}
                                         <span className="text-[11px] px-2 py-1 rounded-md bg-white/10 text-indigo-100/80">
-                                            {isMine ? "我的掛單" : "排隊中"}
+                                            {isMine ? "My order" : "Queued"}
                                         </span>
                                     </div>
                                 )
@@ -512,14 +511,14 @@ export default function OrderBookPage() {
                     </Card>
                     <Card className="border-white/10 bg-white/5 backdrop-blur">
                         <CardHeader>
-                            <CardTitle className="text-white">我的掛單</CardTitle>
+                            <CardTitle className="text-white">My Orders</CardTitle>
                             <CardDescription className="text-indigo-100/80">
-                                只顯示綁定錢包所掛的單，可在此取消
+                                Only orders from the connected wallet; cancel here
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {!walletAddress && <p className="text-sm text-indigo-100/70">請先連錢包以查看。</p>}
-                            {walletAddress && myOrders.length === 0 && <p className="text-sm text-indigo-100/70">你目前在此標的沒有掛單。</p>}
+                            {!walletAddress && <p className="text-sm text-indigo-100/70">Connect your wallet to view.</p>}
+                            {walletAddress && myOrders.length === 0 && <p className="text-sm text-indigo-100/70">No orders for this product.</p>}
                             {myOrders.map((order) => (
                                 <div
                                     key={order.id}
@@ -528,10 +527,10 @@ export default function OrderBookPage() {
                                     <div>
                                         <p className="text-sm font-semibold">
                                             <span className={order.side === "BUY" ? "text-emerald-400" : "text-rose-400"}>
-                                                {order.side === "BUY" ? "買" : "賣"}
+                                                {order.side === "BUY" ? "Bid" : "Ask"}
                                             </span>
                                             {" · "}
-                                            {formatPrice(order.price)} · {order.remaining} / {order.quantity} 席
+                                            {formatPrice(order.price)} · {order.remaining} / {order.quantity} seats
                                         </p>
                                         <p className="text-xs text-indigo-200/70">{new Date(order.createdAt).toLocaleString()}</p>
                                     </div>
@@ -542,14 +541,14 @@ export default function OrderBookPage() {
                                         onClick={async () => {
                                             try {
                                                 await cancelOrder(product, order.id)
-                                                toast({ title: "已取消掛單" })
+                                                toast({ title: "Order cancelled" })
                                                 loadData()
                                             } catch (error) {
-                                                toast({ title: "取消失敗", variant: "destructive" })
+                                                toast({ title: "Cancel failed", variant: "destructive" })
                                             }
                                         }}
                                     >
-                                        取消
+                                        Cancel
                                     </Button>
                                 </div>
                             ))}
@@ -557,15 +556,15 @@ export default function OrderBookPage() {
                     </Card>
                     <Card className="border-white/10 bg-white/5 backdrop-blur md:col-span-2">
                         <CardHeader>
-                            <CardTitle className="text-white">我的席位 (My Subscriptions)</CardTitle>
+                            <CardTitle className="text-white">My Seats (Subscriptions)</CardTitle>
                             <CardDescription className="text-indigo-100/80">
-                                撮合後的席位分配，只顯示目前標的
+                                Seat allocations after matches for this product
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {!walletAddress && <p className="text-sm text-indigo-100/70">請先連錢包。</p>}
+                            {!walletAddress && <p className="text-sm text-indigo-100/70">Connect wallet to view.</p>}
                             {walletAddress && allocations.length === 0 && (
-                                <p className="text-sm text-indigo-100/70">目前沒有席位分配紀錄。</p>
+                                <p className="text-sm text-indigo-100/70">No seat allocations yet.</p>
                             )}
                             {allocations
                                 .filter((a) => a.marketId === product)
@@ -576,7 +575,7 @@ export default function OrderBookPage() {
                                     >
                                         <div>
                                             <p className="text-sm font-semibold text-emerald-200">
-                                                席位 {a.qty} × {formatPrice(a.price)} · {a.state}
+                                                Seats {a.qty} × {formatPrice(a.price)} · {a.state}
                                             </p>
                                             <p className="text-xs text-indigo-200/70">{new Date(a.createdAt).toLocaleString()}</p>
                                         </div>
@@ -609,10 +608,10 @@ function OrderSideTable({
         <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-inner shadow-black/30">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-indigo-50">{title}</h3>
-                <span className="text-xs text-indigo-100/70">價格 / 總席位</span>
+                <span className="text-xs text-indigo-100/70">Price / total seats</span>
             </div>
             <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {rows.length === 0 && <p className="text-sm text-indigo-100/60">尚無掛單</p>}
+                {rows.length === 0 && <p className="text-sm text-indigo-100/60">No orders</p>}
                 {rows.slice(0, 12).map((row) => (
                     <div
                         key={`${side}-${row.price}`}
@@ -632,7 +631,7 @@ function OrderSideTable({
                             />
                         )}
                         <span className="font-semibold z-10">{formatPrice(row.price)}</span>
-                        <span className="font-mono text-indigo-50 z-10">{row.size.toFixed(2)} 席</span>
+                        <span className="font-mono text-indigo-50 z-10">{row.size.toFixed(2)} seats</span>
                     </div>
                 ))}
             </div>
@@ -650,16 +649,16 @@ function DepthMeter({ bids, asks }: { bids: OrderBookSnapshot["bids"]; asks: Ord
     return (
         <div className="mt-4">
             <div className="flex items-center justify-between text-xs text-indigo-100/80 mb-1">
-                <span>買盤 {totalBids.toFixed(2)} 席</span>
-                <span>賣盤 {totalAsks.toFixed(2)} 席</span>
+                <span>Bids {totalBids.toFixed(2)} seats</span>
+                <span>Asks {totalAsks.toFixed(2)} seats</span>
             </div>
             <div className="h-3 w-full rounded-full overflow-hidden border border-white/10 bg-white/5 flex">
                 <div className="bg-emerald-500" style={{ width: `${bidPct}%` }} />
                 <div className="bg-rose-500" style={{ width: `${askPct}%` }} />
             </div>
             <div className="flex items-center justify-between text-[11px] text-indigo-100/70 mt-1">
-                <span>{bidPct.toFixed(1)}% 買</span>
-                <span>{askPct.toFixed(1)}% 賣</span>
+                <span>{bidPct.toFixed(1)}% bids</span>
+                <span>{askPct.toFixed(1)}% asks</span>
             </div>
         </div>
     )

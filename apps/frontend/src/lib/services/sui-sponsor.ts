@@ -9,9 +9,9 @@ export class SuiSponsorService implements ISponsorService {
     constructor(private client: SuiClient) { }
 
     async checkIsSponsor(address: string): Promise<boolean> {
-        // 真實邏輯：查詢該 Address 是否擁有 Sponsor Object 或在 Sponsor Resource List 中
-        // 暫時回傳 false，等合約定義好查詢方式
-        // 範例: this.client.getObject(...)
+        // Real logic: query whether the address owns a Sponsor Object or is in the sponsor registry
+        // Temporary false until contract queries are defined
+        // Example: this.client.getObject(...)
         return false;
     }
 
@@ -39,7 +39,7 @@ export class SuiSponsorService implements ISponsorService {
         if (!signer) throw new Error("Signer required for real transaction");
 
         const tx = new Transaction();
-        // 這裡應該要做加密
+        // TODO: add encryption before sending credentials
         const encrypted = JSON.stringify(credentials);
         buildSubmitCredentialsPTB(tx, offerId, encrypted);
 
@@ -58,7 +58,7 @@ export class SuiSponsorService implements ISponsorService {
     }
 
     async getMyOffers(address: string): Promise<Offer[]> {
-        // 真實邏輯：使用 SuiClient 查詢該地址擁有的 Offer Objects
+        // Real logic: query owned Offer objects via SuiClient
         // this.client.getOwnedObjects(...)
         return [];
     }

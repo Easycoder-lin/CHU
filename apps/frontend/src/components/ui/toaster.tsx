@@ -33,7 +33,7 @@ export function Toaster() {
                         {action}
                         <button
                             type="button"
-                            aria-label="關閉通知"
+                            aria-label="Close notification"
                             onClick={() => dismiss(id)}
                             className="absolute right-2 top-2 rounded-full p-1.5 bg-white/80 text-gray-800 shadow hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >

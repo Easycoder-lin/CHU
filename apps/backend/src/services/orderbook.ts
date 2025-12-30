@@ -113,14 +113,14 @@ function isValidProduct(product?: string): product is ProductId {
 }
 
 const PRODUCT_META: Record<ProductId, string> = {
-  NETFLIX_ANNUAL: "Netflix 年度會員",
-  SPOTIFY_ANNUAL: "Spotify 年度會員",
-  CHATGPT_ANNUAL: "ChatGPT Plus 年度",
-  GEMINI_ANNUAL: "Gemini Advanced 年度",
-  YOUTUBE_PREMIUM_ANNUAL: "YouTube Premium 年度",
-  DISNEY_BUNDLE_ANNUAL: "Disney+ Bundle 年度",
-  APPLE_ONE_ANNUAL: "Apple One 年度",
-  PRIME_VIDEO_ANNUAL: "Prime Video 年度",
+  NETFLIX_ANNUAL: "Netflix Annual",
+  SPOTIFY_ANNUAL: "Spotify Annual",
+  CHATGPT_ANNUAL: "ChatGPT Plus Annual",
+  GEMINI_ANNUAL: "Gemini Advanced Annual",
+  YOUTUBE_PREMIUM_ANNUAL: "YouTube Premium Annual",
+  DISNEY_BUNDLE_ANNUAL: "Disney+ Bundle Annual",
+  APPLE_ONE_ANNUAL: "Apple One Annual",
+  PRIME_VIDEO_ANNUAL: "Prime Video Annual",
 };
 
 class OrderBookService {

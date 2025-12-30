@@ -7,10 +7,10 @@ const { PACKAGE_ID, MODULES } = CONTRACT_CONFIG;
 const MODULE_MARKET = MODULES.MARKET;
 
 /**
- * 建構 "加入方案 (付費)" 的交易
+ * Build PTB for joining an offer (paying seats)
  */
 export const buildJoinOfferPTB = (tx: Transaction, offerId: string, paymentAmount: bigint) => {
-    // 支付 Seat 費用
+    // Pay seat fee
     const [coin] = tx.splitCoins(tx.gas, [paymentAmount]);
 
     tx.moveCall({
@@ -26,7 +26,7 @@ export const buildJoinOfferPTB = (tx: Transaction, offerId: string, paymentAmoun
 };
 
 /**
- * 建構 "提出爭議" 的交易
+ * Build PTB for raising a dispute
  */
 export const buildRaiseDisputePTB = (tx: Transaction, offerId: string, reason: string) => {
     tx.moveCall({
