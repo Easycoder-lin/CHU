@@ -27,7 +27,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
             // In real app, tabs might route to different pages
             if (tab === 'My Offers') router.push('/sponsor/manage')
             if (tab === 'My Subscriptions') router.push('/member/orders')
-            if (tab === 'Browse') router.push('/marketplace')
+            if (tab === 'Browse') router.push('/orderbook')
         }
         setIsMobileMenuOpen(false)
     }

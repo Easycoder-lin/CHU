@@ -32,8 +32,10 @@ export function Toaster() {
                         </div>
                         {action}
                         <button
+                            type="button"
+                            aria-label="關閉通知"
                             onClick={() => dismiss(id)}
-                            className="absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 ring-offset-background hover:bg-secondary"
+                            className="absolute right-2 top-2 rounded-full p-1.5 bg-white/80 text-gray-800 shadow hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
                             <X className="h-4 w-4" />
                         </button>
