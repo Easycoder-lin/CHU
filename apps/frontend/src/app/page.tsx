@@ -15,10 +15,10 @@ export default function LandingPage() {
     setMode(mode)
     switch (mode) {
       case "sponsor":
-        router.push("/sponsor/stake")
+        router.push("/orderbook")
         break
       case "member":
-        router.push("/marketplace")
+        router.push("/orderbook")
         break
       case "login":
         router.push("/login")
