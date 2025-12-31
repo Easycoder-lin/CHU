@@ -64,32 +64,32 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
         offer.status === "CREDENTIAL_SUBMITTED" && offer.credentials
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden text-left">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden text-left transition-colors">
             {/* Card Header */}
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-start justify-between mb-4">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <span className="text-2xl">{getServiceIcon(offer.service)}</span>
-                            <h3 className="text-xl font-bold text-gray-900">{offer.title}</h3>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{offer.title}</h3>
                         </div>
                         <OfferStatusBadge status={offer.status} />
                     </div>
                     <div className="text-right">
-                        <p className="text-2xl font-bold text-gray-900">${offer.price}</p>
-                        <p className="text-sm text-gray-500">per seat / {offer.period}</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">${offer.price}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">per seat / {offer.period}</p>
                     </div>
                 </div>
 
                 {/* Seats Progress */}
                 <div className="mt-4">
                     <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">Seats Filled</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-slate-600 dark:text-slate-400">Seats Filled</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-200">
                             {offer.takenSeats} / {offer.totalSeats}
                         </span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] rounded-full transition-all"
                             style={{
@@ -101,23 +101,23 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
             </div>
 
             {/* Action Section */}
-            <div className="p-6 bg-gray-50">
+            <div className="p-6 bg-slate-50 dark:bg-slate-950/50">
                 {/* Show credential submission form */}
                 {canSubmitCredentials && !showCredentialForm && (
                     <div className="text-center">
-                        <div className="flex items-center justify-center gap-2 text-amber-600 mb-4">
+                        <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-500 mb-4">
                             <Clock className="w-5 h-5" />
                             <span className="font-medium">
                                 Credential submission required
                             </span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-4">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                             Deadline: {offer.credentialDeadline?.toLocaleDateString()}{" "}
                             {offer.credentialDeadline?.toLocaleTimeString()}
                         </p>
                         <Button
                             onClick={() => setShowCredentialForm(true)}
-                            className="px-6 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold shadow-md"
+                            className="px-6 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold shadow-md dark:shadow-none hover:opacity-90 transition-opacity"
                         >
                             Submit Credentials
                         </Button>
@@ -128,7 +128,7 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                 {canSubmitCredentials && showCredentialForm && (
                     <div className="space-y-4">
                         <div>
-                            <Label className="block text-sm font-medium text-gray-700 mb-2">
+                            <Label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                 Username / Email
                             </Label>
                             <Input
@@ -140,12 +140,12 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                                         username: e.target.value,
                                     }))
                                 }
-                                className="w-full px-4 py-3 h-auto rounded-xl border border-gray-200 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 outline-none"
+                                className="w-full px-4 py-3 h-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900 outline-none"
                                 placeholder="Enter account username or email"
                             />
                         </div>
                         <div>
-                            <Label className="block text-sm font-medium text-gray-700 mb-2">
+                            <Label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                 Password
                             </Label>
                             <Input
@@ -157,21 +157,21 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                                         password: e.target.value,
                                     }))
                                 }
-                                className="w-full px-4 py-3 h-auto rounded-xl border border-gray-200 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 outline-none"
+                                className="w-full px-4 py-3 h-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900 outline-none"
                                 placeholder="Enter account password"
                             />
                         </div>
-                        <label className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200 cursor-pointer">
+                        <label className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900 cursor-pointer">
                             <Checkbox
                                 checked={confirmed}
                                 onCheckedChange={(checked) => setConfirmed(!!checked)}
-                                className="mt-0.5 border-amber-300 text-[#FF6B6B] data-[state=checked]:bg-[#FF6B6B] data-[state=checked]:border-[#FF6B6B]"
+                                className="mt-0.5 border-amber-300 dark:border-amber-700 text-[#FF6B6B] data-[state=checked]:bg-[#FF6B6B] data-[state=checked]:border-[#FF6B6B]"
                             />
                             <div>
-                                <p className="font-medium text-amber-800">
+                                <p className="font-medium text-amber-800 dark:text-amber-400">
                                     I confirm these credentials are correct and working
                                 </p>
-                                <p className="text-sm text-amber-600">
+                                <p className="text-sm text-amber-600 dark:text-amber-500/80">
                                     Providing invalid credentials may result in disputes and loss of
                                     stake.
                                 </p>
@@ -181,7 +181,7 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                             <Button
                                 variant="outline"
                                 onClick={() => setShowCredentialForm(false)}
-                                className="flex-1 py-3 h-auto border-gray-200 text-gray-600 hover:bg-gray-50 bg-white"
+                                className="flex-1 py-3 h-auto border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900"
                             >
                                 Cancel
                             </Button>
@@ -193,7 +193,7 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                                     !credentials.password ||
                                     isSubmitting
                                 }
-                                className="flex-1 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-1 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
                             >
                                 {isSubmitting ? (
                                     <>
@@ -214,22 +214,22 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                 {/* Show submitted credentials info */}
                 {showCredentials && (
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-blue-600">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                             <CheckCircle2 className="w-5 h-5" />
                             <span className="font-medium">Credentials submitted</span>
                         </div>
-                        <div className="bg-blue-50 rounded-xl p-4 text-sm">
-                            <p className="text-blue-800">
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 text-sm border border-blue-100 dark:border-blue-900">
+                            <p className="text-blue-800 dark:text-blue-300">
                                 <strong>Submitted:</strong>{" "}
                                 {offer.credentials?.submittedAt.toLocaleDateString()}{" "}
                                 {offer.credentials?.submittedAt.toLocaleTimeString()}
                             </p>
-                            <p className="text-blue-800 mt-1">
+                            <p className="text-blue-800 dark:text-blue-300 mt-1">
                                 <strong>Unlock Date:</strong>{" "}
                                 {offer.credentials?.unlockAt.toLocaleDateString()}{" "}
                                 {offer.credentials?.unlockAt.toLocaleTimeString()}
                             </p>
-                            <p className="text-blue-600 mt-2">
+                            <p className="text-blue-600 dark:text-blue-400 mt-2">
                                 Funds will be available for withdrawal after the 3-day
                                 verification period.
                             </p>
@@ -240,14 +240,14 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                 {/* Withdraw button */}
                 {canWithdraw && (
                     <div className="text-center">
-                        <div className="flex items-center justify-center gap-2 text-emerald-600 mb-4">
+                        <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 mb-4">
                             <CheckCircle2 className="w-5 h-5" />
                             <span className="font-medium">Verification period complete!</span>
                         </div>
                         <Button
                             onClick={handleWithdraw}
                             disabled={isWithdrawing}
-                            className="px-8 py-4 h-auto bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                            className="px-8 py-4 h-auto bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-200 dark:shadow-none hover:shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
                         >
                             {isWithdrawing ? (
                                 <>
@@ -261,7 +261,7 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                                 </>
                             )}
                         </Button>
-                        <p className="text-sm text-gray-500 mt-3">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">
                             You'll receive your stake + all member payments
                         </p>
                     </div>
@@ -269,11 +269,11 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
                 {/* Dispute status */}
                 {offer.status === "DISPUTE_OPEN" && (
-                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
-                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900">
+                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-500" />
                         <div>
-                            <p className="font-medium text-red-800">Dispute in Progress</p>
-                            <p className="text-sm text-red-600">
+                            <p className="font-medium text-red-800 dark:text-red-300">Dispute in Progress</p>
+                            <p className="text-sm text-red-600 dark:text-red-400">
                                 A member has reported an issue with the credentials.
                             </p>
                         </div>
@@ -282,11 +282,11 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
                 {/* Closed status */}
                 {offer.status === "CLOSED" && (
-                    <div className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl">
-                        <CheckCircle2 className="w-6 h-6 text-gray-500" />
+                    <div className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                        <CheckCircle2 className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                         <div>
-                            <p className="font-medium text-gray-700">Offer Completed</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="font-medium text-slate-700 dark:text-slate-300">Offer Completed</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
                                 Funds have been withdrawn successfully.
                             </p>
                         </div>
@@ -295,7 +295,7 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
                 {/* Listed status */}
                 {offer.status === "LISTED" && (
-                    <div className="text-center text-gray-500">
+                    <div className="text-center text-slate-500 dark:text-slate-400">
                         <p>Waiting for members to join...</p>
                         <p className="text-sm mt-1">
                             {offer.totalSeats - offer.takenSeats} seats remaining

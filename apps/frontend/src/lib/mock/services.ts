@@ -9,26 +9,35 @@ class MockDB {
     constructor() {
         // Seed some data
         this.sponsors.add("0x123");
+
+        // Offer 1: Active Netflix with Credentials (READY TO ACCESS)
         this.offers.push({
             id: "offer-1",
             service: "Netflix",
             title: "Netflix Premium 4K",
             description: "Family plan shared slot, long term stable.",
             totalSeats: 4,
-            takenSeats: 2,
+            takenSeats: 4,
             price: 5,
             currency: "SUI",
             period: "mo",
             sponsorId: "0x123",
             sponsorName: "Alice",
             sponsorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice",
-            status: "LISTED",
-            createdAt: new Date(Date.now() - 86400000 * 2),
+            status: "CREDENTIAL_SUBMITTED",
+            createdAt: new Date(Date.now() - 86400000 * 5),
             credentialDeadline: new Date(Date.now() + 86400000 * 5),
             members: ["0xUserA", "0xUserB"],
-            tags: ["4K", "Stable"]
+            tags: ["4K", "Stable"],
+            credentials: {
+                username: "alice_family@netflix.com",
+                password: "SecurePassword123!",
+                submittedAt: new Date(Date.now() - 86400000),
+                unlockAt: new Date(Date.now() - 86400000)
+            }
         });
 
+        // Offer 2: YouTube Pending Credentials
         this.offers.push({
             id: "offer-2",
             service: "YouTube",
@@ -47,6 +56,33 @@ class MockDB {
             credentialDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
             members: [],
             tags: ["Music", "NoAds"]
+        });
+
+        // Offer 3: Expired Spotify (CLOSED)
+        this.offers.push({
+            id: "offer-3",
+            service: "Spotify",
+            title: "Spotify Duo",
+            description: "Music for two.",
+            totalSeats: 2,
+            takenSeats: 2,
+            price: 3,
+            currency: "SUI",
+            period: "mo",
+            sponsorId: "0x789",
+            sponsorName: "Charlie",
+            sponsorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie",
+            status: "CLOSED",
+            createdAt: new Date(Date.now() - 86400000 * 60),
+            credentialDeadline: new Date(Date.now() - 86400000 * 55),
+            members: ["0xUserC"],
+            tags: ["Music"],
+            credentials: {
+                username: "old_spotify@gmail.com",
+                password: "ExpiredPassword",
+                submittedAt: new Date(Date.now() - 86400000 * 59),
+                unlockAt: new Date(Date.now() - 86400000 * 59)
+            }
         });
     }
 
@@ -82,9 +118,6 @@ export class MockSponsorService implements ISponsorService {
 
     async stake(amount: number, signer?: TransactionSigner): Promise<string> {
         await delay(2000);
-        // For mock, we pretend the caller became a sponsor.
-        // We can't access caller address easily here without context,
-        // effectively we assume success.
         return "0xMockTxDigest_Stake_" + randomId();
     }
 
@@ -127,8 +160,7 @@ export class MockSponsorService implements ISponsorService {
 
     async getMyOffers(address: string): Promise<Offer[]> {
         await delay(800);
-        // creating some fake "my offers" if address matches '0xMe' or just return all for demo
-        return db.getOffers(); // Return all for demo visibility
+        return db.getOffers();
     }
 }
 
@@ -147,7 +179,8 @@ export class MockMemberService implements IMemberService {
 
     async getMySubscriptions(address: string): Promise<Offer[]> {
         await delay(800);
-        return [db.getOffers()[0]];
+        // Return a mix of offers to demonstrate different card states
+        return db.getOffers();
     }
 
     async getMarketOffers(): Promise<Offer[]> {

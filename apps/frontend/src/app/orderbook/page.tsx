@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { ArrowDownUp, ArrowRightLeft, BarChart3, RefreshCw } from "lucide-react"
+import { ArrowDownUp, ArrowRightLeft, BarChart3, RefreshCw, Loader2, Search, Filter } from "lucide-react"
 import { Navbar } from "@/components/shared/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,7 +26,7 @@ const PRODUCT_OPTIONS: Array<{ id: ProductId; name: string; desc: string; badge:
     { id: "GEMINI_ANNUAL", name: "Gemini Advanced 年度", desc: "搜尋 + AI 助手年費方案", badge: "AI" },
 ]
 
-export default function OrderBookPage() {
+function OrderBookContent() {
     const { toast } = useToast()
     const { currentMode, walletAddress, walletConnected, user } = useAuth()
     const isSponsor = user?.isSponsor
@@ -209,28 +209,27 @@ export default function OrderBookPage() {
     const recentTrades = useMemo(() => trades.slice(-6).reverse(), [trades])
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#0d1024] via-[#0b0f1d] to-[#0b141f] text-white">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0b0f1a] text-slate-900 dark:text-slate-50 transition-colors duration-300">
             <Navbar activeTab="Browse" />
-            <main className="max-w-7xl mx-auto px-4 pb-16 pt-6 space-y-8">
-                <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 shadow-xl shadow-indigo-900/30">
+            <main className="max-w-7xl mx-auto px-4 pb-16 pt-8 space-y-8">
+                {/* Product Selection Section */}
+                <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                     <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <ArrowRightLeft className="w-4 h-4" />
-                            選擇標的
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <ArrowRightLeft className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                            選擇標的 (Choose Market)
                         </h2>
-                        <p className="text-sm text-indigo-100/70">先選標的，再查看對應的訂單簿</p>
+                        <div className="relative w-full md:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                            <Input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="搜尋服務..."
+                                className="pl-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors"
+                            />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 mb-4">
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="搜尋服務（Netflix、Spotify、ChatGPT…）"
-                            className="bg-white/5 border-white/10 text-white placeholder:text-indigo-100/60"
-                        />
-                        <span className="text-xs text-indigo-100/70">
-                            共 {filteredProducts.length} 個結果
-                        </span>
-                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         {filteredProducts.map((opt) => {
                             const active = opt.id === product
@@ -243,24 +242,30 @@ export default function OrderBookPage() {
                                         setSide("BUY")
                                     }}
                                     className={cn(
-                                        "text-left rounded-2xl border px-4 py-3 transition-all",
+                                        "text-left rounded-2xl border px-4 py-3 transition-all duration-200",
                                         active
-                                            ? "border-indigo-400/60 bg-indigo-500/20 shadow-lg shadow-indigo-800/30"
-                                            : "border-white/10 bg-white/5 hover:border-indigo-400/40 hover:bg-white/10"
+                                            ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 shadow-md shadow-indigo-100 dark:shadow-indigo-900/20 ring-1 ring-indigo-200 dark:ring-indigo-800"
+                                            : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm"
                                     )}
                                 >
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-indigo-100">
+                                        <span className={cn(
+                                            "text-xs px-2 py-1 rounded-full font-medium",
+                                            active
+                                                ? "bg-white dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200"
+                                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                        )}>
                                             {opt.badge}
                                         </span>
-                                        {active && <span className="text-xs text-emerald-300">使用中</span>}
+                                        {active && <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Active</span>}
                                     </div>
-                                    <p className="text-sm font-semibold text-white mt-2">{opt.name}</p>
-                                    <p className="text-xs text-indigo-100/70 mt-1">{opt.desc}</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-2">{opt.name}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{opt.desc}</p>
                                     {summary && (
-                                        <p className="text-[11px] text-indigo-100/80 mt-2">
-                                            最佳買 {formatPrice(summary.bestBid)} / 賣 {formatPrice(summary.bestAsk)}
-                                        </p>
+                                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] font-mono">
+                                            <span className="text-emerald-600 dark:text-emerald-400">Buy: {formatPrice(summary.bestBid)}</span>
+                                            <span className="text-rose-600 dark:text-rose-400">Sell: {formatPrice(summary.bestAsk)}</span>
+                                        </div>
                                     )}
                                 </button>
                             )
@@ -268,58 +273,61 @@ export default function OrderBookPage() {
                     </div>
                 </section>
 
-                <header className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm p-8 shadow-xl shadow-indigo-900/30">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                            <div className="space-y-3">
-                                <p className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-200 bg-indigo-500/20 px-3 py-1 rounded-full">
-                                    <ArrowRightLeft className="w-4 h-4" />
-                                    雙邊 Order Book
+                {/* Market Header Stats */}
+                <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+                        <div className="space-y-4">
+                            <div className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900">
+                                <BarChart3 className="w-4 h-4" />
+                                Live Order Book
+                            </div>
+                            <div>
+                                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    {selectedProduct.name}
+                                </h1>
+                                <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-2xl text-lg">
+                                    Real-time matchmaking for shared subscriptions.
                                 </p>
-                                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                                {selectedProduct.name} — 即時買賣簿
-                            </h1>
-                            <p className="text-indigo-100/80 max-w-2xl">
-                                Sponsor 可以掛出賣價，Member 可以掛買單。像股票一樣的撮合邏輯：
-                                市價優先、時間優先，交叉價格即刻成交。
-                            </p>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <MetricCard label="最佳買價" value={formatPrice(bestBid)} tone="buy" />
-                            <MetricCard label="最佳賣價" value={formatPrice(bestAsk)} tone="sell" />
-                            <MetricCard label="價差" value={spread ? `${spread.toFixed(2)} USD` : "--"} tone="neutral" />
-                            <MetricCard label="最新成交" value={book?.lastTrade ? formatPrice(book.lastTrade.price) : "--"} tone="neutral" />
+                        <div className="grid grid-cols-2 gap-4 min-w-[320px]">
+                            <MetricCard label="Best Bid" value={formatPrice(bestBid)} tone="buy" />
+                            <MetricCard label="Best Ask" value={formatPrice(bestAsk)} tone="sell" />
+                            <MetricCard label="Spread" value={spread ? `${spread.toFixed(2)}` : "--"} tone="neutral" />
+                            <MetricCard label="Last Trade" value={book?.lastTrade ? formatPrice(book.lastTrade.price) : "--"} tone="neutral" />
                             {canCross && (
-                                <div className="col-span-2 text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
-                                    可立即成交：最佳買 ≥ 最佳賣，下單會即刻撮合。
+                                <div className="col-span-2 text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl px-4 py-3 font-medium flex items-center justify-center">
+                                    ✨ Market is crossable! Orders will fill instantly.
                                 </div>
                             )}
                         </div>
                     </div>
                 </header>
 
-                <section className="grid lg:grid-cols-3 gap-6">
-                    <Card className="lg:col-span-2 border-white/10 bg-white/5 backdrop-blur">
-                        <CardHeader className="flex flex-row items-center justify-between">
+                <section className="grid lg:grid-cols-3 gap-8">
+                    {/* Order Book Depth */}
+                    <Card className="lg:col-span-2 border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+                        <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                             <div>
-                                <CardTitle className="text-xl text-white">訂單簿 (買賣分欄)</CardTitle>
-                                <CardDescription className="text-indigo-100/80">
-                                    按價格聚合，顏色深淺代表席位量大小。
+                                <CardTitle className="text-xl text-slate-900 dark:text-white">Order Book</CardTitle>
+                                <CardDescription className="text-slate-500 dark:text-slate-400">
+                                    Market liquidity and depth
                                 </CardDescription>
                             </div>
                             <Button
                                 variant="outline"
-                                className="text-indigo-50 border-indigo-300/50 bg-indigo-600/30 hover:bg-indigo-500/40"
+                                className="text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                                 size="sm"
                                 onClick={loadData}
                                 disabled={refreshing}
                             >
                                 <RefreshCw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
-                                重新整理
+                                Refresh
                             </Button>
                         </CardHeader>
-                        <CardContent className="grid md:grid-cols-2 gap-4">
+                        <CardContent className="grid md:grid-cols-2 gap-6 pt-6">
                             <OrderSideTable
-                                title="賣單 (Ask)"
+                                title="Asks (Sellers)"
                                 rows={book?.asks ?? []}
                                 side="SELL"
                                 onSelect={(p) => {
@@ -328,7 +336,7 @@ export default function OrderBookPage() {
                                 }}
                             />
                             <OrderSideTable
-                                title="買單 (Bid)"
+                                title="Bids (Buyers)"
                                 rows={book?.bids ?? []}
                                 side="BUY"
                                 onSelect={(p) => {
@@ -336,30 +344,42 @@ export default function OrderBookPage() {
                                     setPrice(p.toString())
                                 }}
                             />
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-2 pt-2">
                                 <DepthMeter bids={book?.bids ?? []} asks={book?.asks ?? []} />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="border-white/10 bg-gradient-to-br from-indigo-600/30 via-indigo-500/10 to-slate-900/60 text-white">
+                    {/* Order Entry Form */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <BarChart3 className="w-5 h-5" />
-                                下單
+                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+                                Place Order
                             </CardTitle>
-                            <CardDescription className="text-indigo-50/80">
-                                {actor === "SPONSOR" ? "你目前以 Sponsor 身份掛賣單" : "你目前以 Member 身份掛買單"}
+                            <CardDescription className="text-slate-500 dark:text-slate-400">
+                                {actor === "SPONSOR" ? "Selling as Sponsor" : "Buying as Member"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center gap-2 mb-3 text-sm text-indigo-100/70">
-                                <span>現價買入/賣出將自動填入最佳價：</span>
+                            <div className="flex items-center gap-2 mb-4">
+                                <TogglePill active={side === "BUY"} onClick={() => setSide("BUY")} label="Buy (Bid)" tone="buy" />
+                                <TogglePill
+                                    active={side === "SELL"}
+                                    onClick={() => canSell && setSide("SELL")}
+                                    label="Sell (Ask)"
+                                    tone="sell"
+                                    disabled={!canSell}
+                                />
+                            </div>
+
+                            <div className="mb-6 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase mb-2">Market Quick Actions</div>
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="border-white/20 text-emerald-200 hover:bg-white/10"
+                                        className="flex-1 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 bg-white dark:bg-slate-900"
                                         onClick={() => {
                                             if (bestAsk) {
                                                 setSide("BUY");
@@ -368,12 +388,12 @@ export default function OrderBookPage() {
                                         }}
                                         disabled={!bestAsk}
                                     >
-                                        現價買入
+                                        Buy @ Best Ask
                                     </Button>
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="border-white/20 text-rose-200 hover:bg-white/10"
+                                        className="flex-1 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-white dark:bg-slate-900"
                                         onClick={() => {
                                             if (bestBid && canSell && isSponsor) {
                                                 setSide("SELL");
@@ -382,209 +402,198 @@ export default function OrderBookPage() {
                                         }}
                                         disabled={!bestBid || !canSell || !isSponsor}
                                     >
-                                        現價賣出
+                                        Sell @ Best Bid
                                     </Button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <TogglePill active={side === "BUY"} onClick={() => setSide("BUY")} label="買入 (Bid)" tone="buy" />
-                                <TogglePill
-                                    active={side === "SELL"}
-                                    onClick={() => canSell && setSide("SELL")}
-                                    label="賣出 (Ask)"
-                                    tone="sell"
-                                    disabled={!canSell}
-                                />
-                            </div>
-                            <form onSubmit={handleSubmit} className="space-y-4">
+
+                            <form onSubmit={handleSubmit} className="space-y-5">
                                 <div className="space-y-2">
-                                    <Label className="text-indigo-50">價格 (USD)</Label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={price}
-                                        onChange={(e) => setPrice(e.target.value)}
-                                        className="bg-white/5 border-white/20 text-white"
-                                        placeholder="例如 120"
-                                    />
+                                    <Label className="text-slate-700 dark:text-slate-300 font-medium">Price (USD)</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={price}
+                                            onChange={(e) => setPrice(e.target.value)}
+                                            className="pl-7 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:ring-indigo-500"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-indigo-50">數量 (席位)</Label>
+                                    <Label className="text-slate-700 dark:text-slate-300 font-medium">Quantity (Seats)</Label>
                                     <Input
                                         type="number"
                                         step="1"
                                         min="1"
                                         value={quantity}
                                         onChange={(e) => setQuantity(e.target.value)}
-                                        className="bg-white/5 border-white/20 text-white"
+                                        className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:ring-indigo-500"
                                         placeholder="1"
                                     />
                                 </div>
-                                <p className="text-sm text-indigo-100/70">
-                                    下單將立即與對手盤成交；未成交部分會保留在訂單簿中，遵循時間優先。
-                                </p>
+
                                 <Button
                                     type="submit"
                                     className={cn(
-                                        "w-full font-semibold",
+                                        "w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02]",
                                         side === "BUY"
-                                            ? "bg-emerald-500 hover:bg-emerald-400 text-white"
-                                            : "bg-rose-500 hover:bg-rose-400 text-white",
+                                            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-200"
+                                            : "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-200",
                                     )}
                                     disabled={loading}
                                 >
-                                    {loading ? "送出中..." : side === "BUY" ? "送出買單" : "送出售單"}
+                                    {loading ? "Processing..." : side === "BUY" ? "Place Buy Order" : "Place Sell Order"}
                                 </Button>
                             </form>
                         </CardContent>
                     </Card>
                 </section>
 
-                <section className="grid md:grid-cols-2 gap-6">
-                    <Card className="border-white/10 bg-white/5 backdrop-blur">
+                <section className="grid md:grid-cols-2 gap-8">
+                    {/* Recent Trades */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <ArrowDownUp className="w-5 h-5" />
-                                最新成交
+                            <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                                <ArrowDownUp className="w-5 h-5 text-slate-400" />
+                                Recent Trades
                             </CardTitle>
-                            <CardDescription className="text-indigo-100/80">最近 6 筆成交紀錄</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            {recentTrades.length === 0 && <p className="text-sm text-indigo-100/70">尚無成交。</p>}
-                            {recentTrades.map((trade) => (
-                                <div
-                                    key={trade.id}
-                                    className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
-                                >
-                                    <div>
-                                        <p className="text-sm text-indigo-50">
-                                            {formatPrice(trade.price)} · {trade.quantity} 席
-                                        </p>
-                                        <p className="text-xs text-indigo-200/70">
-                                            {new Date(trade.createdAt).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <span className="text-xs text-indigo-100/80">
-                                        #{trade.buyOrderId.slice(0, 6)} / #{trade.sellOrderId.slice(0, 6)}
-                                    </span>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-white/10 bg-white/5 backdrop-blur">
-                        <CardHeader>
-                            <CardTitle className="text-white">掛單佇列</CardTitle>
-                            <CardDescription className="text-indigo-100/80">
-                                未完成或部分成交的訂單（顯示最新 6 筆）
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {openOrders.length === 0 && <p className="text-sm text-indigo-100/70">沒有未完成的掛單。</p>}
-                            {openOrders.map((order) => {
-                                const isMine = walletAddress && order.walletAddress === walletAddress
-                                return (
+                        <CardContent className="space-y-0">
+                            {recentTrades.length === 0 && <p className="text-sm text-slate-400 italic py-4">No recent trades.</p>}
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {recentTrades.map((trade) => (
                                     <div
-                                        key={order.id}
-                                        className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
+                                        key={trade.id}
+                                        className="flex items-center justify-between py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors px-2 rounded-lg -mx-2"
                                     >
                                         <div>
-                                            <p className="text-sm font-semibold">
-                                                <span className={order.side === "BUY" ? "text-emerald-400" : "text-rose-400"}>
-                                                    {order.side === "BUY" ? "買" : "賣"}
-                                                </span>
-                                                {" · "}
-                                                {formatPrice(order.price)} · {order.remaining} / {order.quantity} 席
+                                            <p className="text-sm font-bold text-slate-900 dark:text-slate-50">
+                                                {formatPrice(trade.price)} <span className="text-slate-400 font-normal">×</span> {trade.quantity}
                                             </p>
-                                            <p className="text-xs text-indigo-200/70">
-                                                {order.actor} · {new Date(order.createdAt).toLocaleString()}
-                                                {isMine && " · 我的掛單"}
+                                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                                                {new Date(trade.createdAt).toLocaleString()}
                                             </p>
                                         </div>
-                                        {/* 佇列不允許取消，僅顯示狀態 */}
-                                        <span className="text-[11px] px-2 py-1 rounded-md bg-white/10 text-indigo-100/80">
-                                            {isMine ? "我的掛單" : "排隊中"}
-                                        </span>
-                                    </div>
-                                )
-                            })}
-                        </CardContent>
-                    </Card>
-                    <Card className="border-white/10 bg-white/5 backdrop-blur">
-                        <CardHeader>
-                            <CardTitle className="text-white">我的掛單</CardTitle>
-                            <CardDescription className="text-indigo-100/80">
-                                只顯示綁定錢包所掛的單，可在此取消
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {!walletAddress && <p className="text-sm text-indigo-100/70">請先連錢包以查看。</p>}
-                            {walletAddress && myOrders.length === 0 && <p className="text-sm text-indigo-100/70">你目前在此標的沒有掛單。</p>}
-                            {myOrders.map((order) => (
-                                <div
-                                    key={order.id}
-                                    className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
-                                >
-                                    <div>
-                                        <p className="text-sm font-semibold">
-                                            <span className={order.side === "BUY" ? "text-emerald-400" : "text-rose-400"}>
-                                                {order.side === "BUY" ? "買" : "賣"}
-                                            </span>
-                                            {" · "}
-                                            {formatPrice(order.price)} · {order.remaining} / {order.quantity} 席
-                                        </p>
-                                        <p className="text-xs text-indigo-200/70">{new Date(order.createdAt).toLocaleString()}</p>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="border-rose-200/60 text-rose-100 hover:bg-rose-500/20"
-                                        onClick={async () => {
-                                            try {
-                                                await cancelOrder(product, order.id)
-                                                toast({ title: "已取消掛單" })
-                                                loadData()
-                                            } catch (error) {
-                                                toast({ title: "取消失敗", variant: "destructive" })
-                                            }
-                                        }}
-                                    >
-                                        取消
-                                    </Button>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                    <Card className="border-white/10 bg-white/5 backdrop-blur md:col-span-2">
-                        <CardHeader>
-                            <CardTitle className="text-white">我的席位 (My Subscriptions)</CardTitle>
-                            <CardDescription className="text-indigo-100/80">
-                                撮合後的席位分配，只顯示目前標的
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {!walletAddress && <p className="text-sm text-indigo-100/70">請先連錢包。</p>}
-                            {walletAddress && allocations.length === 0 && (
-                                <p className="text-sm text-indigo-100/70">目前沒有席位分配紀錄。</p>
-                            )}
-                            {allocations
-                                .filter((a) => a.marketId === product)
-                                .map((a) => (
-                                    <div
-                                        key={a.id}
-                                        className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2"
-                                    >
-                                        <div>
-                                            <p className="text-sm font-semibold text-emerald-200">
-                                                席位 {a.qty} × {formatPrice(a.price)} · {a.state}
-                                            </p>
-                                            <p className="text-xs text-indigo-200/70">{new Date(a.createdAt).toLocaleString()}</p>
-                                        </div>
-                                        <span className="text-[11px] text-indigo-100/80">
-                                            from {a.sellerWallet?.slice(0, 6) ?? "n/a"}
+                                        <span className="text-xs font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                                            #{trade.buyOrderId.slice(0, 4)}…
                                         </span>
                                     </div>
                                 ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Open Orders Queue */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+                        <CardHeader>
+                            <CardTitle className="text-slate-900 dark:text-white">Order Queue / My Orders</CardTitle>
+                            <CardDescription className="text-slate-500 dark:text-slate-400">
+                                Active liquidity in the book
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Tabs could go here, for now just merged list */}
+                            <div className="space-y-3">
+                                {openOrders.length === 0 && <p className="text-sm text-slate-400 italic">No open orders.</p>}
+                                {openOrders.map((order) => {
+                                    const isMine = walletAddress && order.walletAddress === walletAddress
+                                    return (
+                                        <div
+                                            key={order.id}
+                                            className={cn(
+                                                "flex items-center justify-between rounded-xl border px-4 py-3",
+                                                isMine
+                                                    ? "bg-indigo-50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900"
+                                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+                                            )}
+                                        >
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={cn(
+                                                        "text-xs font-bold uppercase px-1.5 py-0.5 rounded",
+                                                        order.side === "BUY"
+                                                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                                                            : "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400"
+                                                    )}>
+                                                        {order.side === "BUY" ? "Buy" : "Sell"}
+                                                    </span>
+                                                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                                        {formatPrice(order.price)} · {order.remaining}/{order.quantity}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                                    {new Date(order.createdAt).toLocaleString()}
+                                                </p>
+                                            </div>
+
+                                            {isMine ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await cancelOrder(product, order.id)
+                                                            toast({ title: "Order Cancelled" })
+                                                            loadData()
+                                                        } catch (error) {
+                                                            toast({ title: "Failed to cancel", variant: "destructive" })
+                                                        }
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            ) : (
+                                                <span className="text-[10px] text-slate-400 px-2">Queue</span>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* My Allocations */}
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 md:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="text-slate-900 dark:text-white">Filled Allocations</CardTitle>
+                            <CardDescription className="text-slate-500 dark:text-slate-400">
+                                Your successful matches for this market
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {!walletAddress && <p className="text-sm text-slate-400 text-center py-4">Connect wallet to view history.</p>}
+                            {walletAddress && allocations.length === 0 && (
+                                <p className="text-sm text-slate-400 text-center py-4">No allocations yet.</p>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                {allocations
+                                    .filter((a) => a.marketId === product)
+                                    .map((a) => (
+                                        <div
+                                            key={a.id}
+                                            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                                                    FROM {a.sellerWallet?.slice(0, 6) ?? "n/a"}
+                                                </span>
+                                                <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">
+                                                    {a.state}
+                                                </span>
+                                            </div>
+                                            <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                                                {a.qty} Seats <span className="text-slate-400 font-normal">@</span> {formatPrice(a.price)}
+                                            </p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                                                {new Date(a.createdAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    ))}
+                            </div>
                         </CardContent>
                     </Card>
                 </section>
@@ -606,33 +615,38 @@ function OrderSideTable({
 }) {
     const maxSize = rows.length ? Math.max(...rows.map((r) => r.size)) : 0
     return (
-        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-inner shadow-black/30">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-indigo-50">{title}</h3>
-                <span className="text-xs text-indigo-100/70">價格 / 總席位</span>
+        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-4">
+            <div className="flex items-center justify-between mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <span>Price</span>
+                <span>Size</span>
             </div>
-            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {rows.length === 0 && <p className="text-sm text-indigo-100/60">尚無掛單</p>}
+            <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+                {rows.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Empty</p>}
                 {rows.slice(0, 12).map((row) => (
                     <div
                         key={`${side}-${row.price}`}
                         onClick={() => onSelect?.(row.price, side)}
                         className={cn(
-                            "flex items-center justify-between rounded-lg px-3 py-2 text-sm border border-white/5 relative overflow-hidden cursor-pointer transition-colors hover:border-white/20",
-                            side === "BUY" ? "bg-emerald-500/10 hover:bg-emerald-500/15" : "bg-rose-500/10 hover:bg-rose-500/15",
+                            "flex items-center justify-between rounded px-3 py-1.5 text-sm relative overflow-hidden cursor-pointer transition-all group",
+                            "hover:bg-slate-100 dark:hover:bg-slate-800"
                         )}
                     >
-                        {maxSize > 0 && (
-                            <div
-                                className={cn(
-                                    "absolute inset-y-0 left-0 opacity-30",
-                                    side === "BUY" ? "bg-emerald-400" : "bg-rose-400",
-                                )}
-                                style={{ width: `${Math.min(100, (row.size / maxSize) * 100)}%` }}
-                            />
-                        )}
-                        <span className="font-semibold z-10">{formatPrice(row.price)}</span>
-                        <span className="font-mono text-indigo-50 z-10">{row.size.toFixed(2)} 席</span>
+                        {/* Size Bar Background */}
+                        <div
+                            className={cn(
+                                "absolute inset-y-0 right-0 opacity-10 transition-all group-hover:opacity-20",
+                                side === "BUY" ? "bg-emerald-600" : "bg-rose-600",
+                            )}
+                            style={{ width: `${Math.min(100, (row.size / maxSize) * 100)}%` }}
+                        />
+
+                        <span className={cn(
+                            "font-mono font-medium z-10",
+                            side === "BUY" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
+                        )}>
+                            {formatPrice(row.price)}
+                        </span>
+                        <span className="font-mono text-slate-600 dark:text-slate-400 z-10">{row.size.toFixed(2)}</span>
                     </div>
                 ))}
             </div>
@@ -648,18 +662,14 @@ function DepthMeter({ bids, asks }: { bids: OrderBookSnapshot["bids"]; asks: Ord
     const askPct = 100 - bidPct
 
     return (
-        <div className="mt-4">
-            <div className="flex items-center justify-between text-xs text-indigo-100/80 mb-1">
-                <span>買盤 {totalBids.toFixed(2)} 席</span>
-                <span>賣盤 {totalAsks.toFixed(2)} 席</span>
+        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">
+                <span>Bid Vol: {totalBids.toFixed(2)}</span>
+                <span>Ask Vol: {totalAsks.toFixed(2)}</span>
             </div>
-            <div className="h-3 w-full rounded-full overflow-hidden border border-white/10 bg-white/5 flex">
+            <div className="h-2.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 flex">
                 <div className="bg-emerald-500" style={{ width: `${bidPct}%` }} />
                 <div className="bg-rose-500" style={{ width: `${askPct}%` }} />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-indigo-100/70 mt-1">
-                <span>{bidPct.toFixed(1)}% 買</span>
-                <span>{askPct.toFixed(1)}% 賣</span>
             </div>
         </div>
     )
@@ -672,12 +682,12 @@ function TogglePill({ active, onClick, label, tone, disabled }: { active: boolea
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "flex-1 rounded-full px-3 py-2 text-sm font-semibold transition-all",
+                "flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-all shadow-sm",
                 active
                     ? tone === "buy"
-                        ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
-                        : "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                    : "bg-white/5 text-indigo-100/80 border border-white/10 hover:bg-white/10",
+                        ? "bg-emerald-600 text-white shadow-emerald-200"
+                        : "bg-rose-600 text-white shadow-rose-200"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700",
                 disabled && "opacity-50 cursor-not-allowed",
             )}
         >
@@ -688,11 +698,15 @@ function TogglePill({ active, onClick, label, tone, disabled }: { active: boolea
 
 function MetricCard({ label, value, tone }: { label: string; value: string; tone: "buy" | "sell" | "neutral" }) {
     const toneClass =
-        tone === "buy" ? "text-emerald-300" : tone === "sell" ? "text-rose-300" : "text-indigo-100"
+        tone === "buy"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : tone === "sell"
+                ? "text-rose-600 dark:text-rose-400"
+                : "text-slate-900 dark:text-white"
     return (
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-lg shadow-black/20">
-            <p className="text-xs text-indigo-100/70">{label}</p>
-            <p className={cn("text-lg font-semibold", toneClass)}>{value}</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 px-4 py-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">{label}</p>
+            <p className={cn("text-lg font-bold font-mono", toneClass)}>{value}</p>
         </div>
     )
 }
@@ -700,4 +714,19 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 function formatPrice(value?: number) {
     if (value === undefined) return "--"
     return `$${value.toFixed(2)}`
+}
+
+export default function OrderBookPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0b0f1a] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    <p className="text-slate-500 font-medium">Loading Market...</p>
+                </div>
+            </div>
+        }>
+            <OrderBookContent />
+        </Suspense>
+    )
 }

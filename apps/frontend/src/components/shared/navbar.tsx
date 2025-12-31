@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, Bell, Menu, LogOut } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 import { WalletButton } from "@/components/shared/wallet-button"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -15,9 +16,10 @@ interface NavbarProps {
 
 export function Navbar({ activeTab, onTabChange }: NavbarProps) {
     const router = useRouter()
-    const { walletConnected, walletAddress, disconnectWallet } = useAuth()
+    const { walletConnected, walletAddress, disconnectWallet, user } = useAuth()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const tabs = ["Browse", "My Offers", "My Subscriptions"]
+    const isSponsor = user?.isSponsor
+    const tabs = ["Browse", "My Subscriptions", ...(isSponsor ? ["My Offers"] : [])]
 
     const handleTabClick = (tab: string) => {
         if (onTabChange) {
@@ -33,7 +35,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
     }
 
     return (
-        <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-orange-100 px-4 py-3 md:px-6 lg:px-8">
+        <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-orange-100 dark:border-slate-800 px-4 py-3 md:px-6 lg:px-8 transition-colors">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 {/* Logo */}
                 <button
@@ -43,7 +45,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF6B6B] to-[#FF8E53] flex items-center justify-center text-white font-bold text-lg">
                         S
                     </div>
-                    <span className="text-xl font-bold text-gray-900 tracking-tight">
+                    <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                         ShareMarket
                     </span>
                 </button>
@@ -57,8 +59,8 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
                             className={cn(
                                 "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
                                 activeTab === tab
-                                    ? "bg-white text-[#FF6B6B] shadow-sm ring-1 ring-orange-100"
-                                    : "text-gray-500 hover:text-gray-700 hover:bg-orange-50"
+                                    ? "bg-white dark:bg-slate-800 text-[#FF6B6B] dark:text-orange-400 shadow-sm ring-1 ring-orange-100 dark:ring-slate-700"
+                                    : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-800"
                             )}
                         >
                             {tab}
@@ -71,10 +73,12 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
                     <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative hidden sm:block">
                         <Search className="w-5 h-5" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative hidden sm:block">
+                    <button className="p-2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors relative hidden sm:block">
                         <Bell className="w-5 h-5" />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6B6B] rounded-full border-2 border-white"></span>
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6B6B] rounded-full border-2 border-white dark:border-slate-900"></span>
                     </button>
+
+                    <ThemeToggle />
 
                     <WalletButton size="sm" className="hidden sm:flex" />
 
