@@ -14,6 +14,25 @@ import { fetchAllocations, fetchMarkets } from "@/lib/market-api"
 import { cancelOrder, fetchOrderBook, fetchOrders, fetchTrades, placeOrder } from "@/lib/orderbook-api"
 import { cn } from "@/lib/utils"
 import type { Allocation, MarketSummary, Order, OrderBookSnapshot, OrderSide, ProductId, Trade } from "@/types"
+import { PriceHistoryChart } from "@/components/shared/price-history-chart"
+
+// Mock Data Generator
+function generateMockHistory(basePrice: number, days = 30) {
+    const data = []
+    let currentPrice = basePrice
+    const now = new Date()
+    const oneDay = 24 * 60 * 60 * 1000
+
+    for (let i = days; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * oneDay).toISOString().split('T')[0] // YYYY-MM-DD
+        const change = (Math.random() - 0.5) * (basePrice * 0.05) // +/- 2.5% volatility
+        currentPrice += change
+        // Ensure price stays positive and realistic
+        currentPrice = Math.max(currentPrice, basePrice * 0.5)
+        data.push({ time, value: parseFloat(currentPrice.toFixed(2)) })
+    }
+    return data
+}
 
 const PRODUCT_OPTIONS: Array<{ id: ProductId; name: string; desc: string; badge: string }> = [
     { id: "NETFLIX_ANNUAL", name: "Netflix 年度會員", desc: "4K / 多人家庭方案，年度授權", badge: "影音" },
@@ -46,6 +65,24 @@ function OrderBookContent() {
     const [product, setProduct] = useState<ProductId>(
         (searchParams.get("product") as ProductId) || "NETFLIX_ANNUAL",
     )
+    const [historyData, setHistoryData] = useState<{ time: string, value: number }[]>([])
+
+    // Update history when product changes
+    useEffect(() => {
+        // Simple mock base prices based on product
+        const basePrices: Record<ProductId, number> = {
+            "NETFLIX_ANNUAL": 120,
+            "SPOTIFY_ANNUAL": 45,
+            "YOUTUBE_PREMIUM_ANNUAL": 50,
+            "PRIME_VIDEO_ANNUAL": 30,
+            "DISNEY_BUNDLE_ANNUAL": 80,
+            "APPLE_ONE_ANNUAL": 60,
+            "CHATGPT_ANNUAL": 200,
+            "GEMINI_ANNUAL": 180,
+        }
+        const base = basePrices[product] || 100
+        setHistoryData(generateMockHistory(base))
+    }, [product])
 
     const actor = currentMode === "sponsor" ? "SPONSOR" : "MEMBER"
     const canSell = actor === "SPONSOR"
@@ -270,6 +307,24 @@ function OrderBookContent() {
                                 </button>
                             )
                         })}
+                    </div>
+                </section>
+
+                {/* Price History Chart */}
+                <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg">
+                                <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Price History</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Past 30 days performance</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="h-[300px] w-full">
+                        <PriceHistoryChart data={historyData} />
                     </div>
                 </section>
 

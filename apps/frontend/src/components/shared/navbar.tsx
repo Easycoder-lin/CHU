@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Bell, Menu, LogOut } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
@@ -18,7 +18,13 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
     const router = useRouter()
     const { walletConnected, walletAddress, disconnectWallet, user } = useAuth()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const isSponsor = user?.isSponsor
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const isSponsor = mounted && user?.isSponsor
     const tabs = ["Browse", "My Subscriptions", ...(isSponsor ? ["My Offers"] : [])]
 
     const handleTabClick = (tab: string) => {
