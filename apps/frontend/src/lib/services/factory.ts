@@ -11,7 +11,7 @@ let memberServiceInstance: IMemberService | null = null;
 let suiClientInstance: SuiClient | null = null;
 
 // 環境變數控制 (可以在 .env.local 設定 NEXT_PUBLIC_USE_MOCK=true)
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+const USE_MOCK = true; // Temporary: process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 function getSuiClient() {
     if (!suiClientInstance) {

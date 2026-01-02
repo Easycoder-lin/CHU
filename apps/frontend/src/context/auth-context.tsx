@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentAccount) {
             setUser(prev => prev?.walletAddress === currentAccount.address ? prev : {
                 walletAddress: currentAccount.address,
-                isSponsor: false, // Default to false, checkSponsorStatus() in a real app
+                isSponsor: true, // Default to true for testing // Default to false, checkSponsorStatus() in a real app
                 stakedAmount: 0,
                 stakedAt: undefined
             });

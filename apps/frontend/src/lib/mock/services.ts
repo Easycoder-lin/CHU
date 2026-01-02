@@ -113,7 +113,7 @@ const randomId = () => Math.random().toString(36).substring(2, 10);
 export class MockSponsorService implements ISponsorService {
     async checkIsSponsor(address: string): Promise<boolean> {
         await delay(500);
-        return db.isSponsor(address);
+        return true; // db.isSponsor(address);
     }
 
     async stake(amount: number, signer?: TransactionSigner): Promise<string> {
