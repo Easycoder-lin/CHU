@@ -1,4 +1,4 @@
-export type ServiceType = 'Netflix' | 'YouTube' | 'Spotify' | 'Disney+' | 'HBO Max' | 'Apple One';
+export type ServiceType = 'Netflix' | 'YouTube' | 'Spotify' | 'Disney+' | 'HBO Max' | 'Apple One' | 'Amazon Prime' | 'ChatGPT' | 'Gemini';
 export type OfferStatus =
     | 'LISTED'
     | 'FULL_PENDING_CREDENTIAL'

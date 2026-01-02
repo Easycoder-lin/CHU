@@ -25,7 +25,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
     }, [])
 
     const isSponsor = mounted && user?.isSponsor
-    const tabs = ["Browse", "My Subscriptions", ...(isSponsor ? ["My Offers"] : [])]
+    const tabs = ["Browse", "My Subscriptions", "Sponsor"]
 
     const handleTabClick = (tab: string) => {
         if (onTabChange) {
@@ -33,7 +33,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
         } else {
             // Fallback or navigation logic if no onTabChange provided
             // In real app, tabs might route to different pages
-            if (tab === 'My Offers') router.push('/sponsor/manage')
+            if (tab === 'Sponsor') router.push(isSponsor ? '/sponsor/manage' : '/sponsor/stake')
             if (tab === 'My Subscriptions') router.push('/member/orders')
             if (tab === 'Browse') router.push('/orderbook')
         }
@@ -69,7 +69,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
                                     : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-800"
                             )}
                         >
-                            {tab}
+                            {tab === "Sponsor" ? (isSponsor ? "My Offers" : "Become Sponsor") : tab}
                         </button>
                     ))}
                 </div>
@@ -113,7 +113,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
                                         : "text-gray-600"
                                 )}
                             >
-                                {tab}
+                                {tab === "Sponsor" ? (isSponsor ? "My Offers" : "Become Sponsor") : tab}
                             </button>
                         ))}
                     </div>

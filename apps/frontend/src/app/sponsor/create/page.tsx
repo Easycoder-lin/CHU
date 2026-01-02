@@ -20,34 +20,25 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ServiceType } from "@/types"
 import { cn } from "@/lib/utils"
-
-const SERVICES: {
-    id: ServiceType
-    label: string
-    icon: string
-}[] = [
-        { id: "Netflix", label: "Netflix", icon: "🎬" },
-        { id: "YouTube", label: "YouTube Premium", icon: "▶️" },
-        { id: "Spotify", label: "Spotify", icon: "🎵" },
-        { id: "Disney+", label: "Disney+", icon: "🏰" },
-        { id: "HBO Max", label: "HBO Max", icon: "📺" },
-        { id: "Apple One", label: "Apple One", icon: "🍎" },
-    ]
+// Import shared constants for consistent Product IDs
+import { PRODUCT_OPTIONS } from "@/lib/shared-constants"
 
 export default function SponsorCreateOfferPage() {
     const router = useRouter()
     const { user, walletConnected } = useAuth()
     const { publishOffer, isPublishing } = useSponsor()
 
+    // Initialize with the first product in our shared list
+    const [selectedProductId, setSelectedProductId] = useState(PRODUCT_OPTIONS[0].id)
+
     const [formData, setFormData] = useState({
-        service: "Netflix" as ServiceType,
-        title: "",
-        description: "",
-        totalSeats: 4,
-        price: 5,
-        period: "mo" as "mo" | "yr",
+        title: PRODUCT_OPTIONS[0].name,
+        description: PRODUCT_OPTIONS[0].desc,
+        totalSeats: PRODUCT_OPTIONS[0].seats,
+        price: PRODUCT_OPTIONS[0].defaultPrice,
     })
 
+    const selectedProduct = PRODUCT_OPTIONS.find(p => p.id === selectedProductId) || PRODUCT_OPTIONS[0]
 
     const [previewDates, setPreviewDates] = useState<{
         createdAt: Date
@@ -62,19 +53,35 @@ export default function SponsorCreateOfferPage() {
         })
     }, [])
 
+    // When product selection changes, update the form defaults
+    const handleProductSelect = (productId: string) => {
+        const product = PRODUCT_OPTIONS.find(p => p.id === productId)
+        if (!product) return
+
+        setSelectedProductId(product.id)
+        setFormData({
+            title: product.name,
+            description: product.desc,
+            totalSeats: product.seats,
+            price: product.defaultPrice,
+        })
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!walletConnected || !user?.isSponsor) return
 
         try {
             await publishOffer({
-                service: formData.service,
+                // Directly map the selected product's service type
+                service: selectedProduct.service as ServiceType,
                 totalSeats: formData.totalSeats,
                 pricePerSeat: formData.price,
-                period: formData.period,
-                title: formData.title || `${formData.service} Subscription`,
+                // Period is fixed by the product definition (e.g., NETFLIX_ANNUAL is always 'yr')
+                period: selectedProduct.period,
+                title: formData.title,
                 description: formData.description,
-                tags: [formData.period === 'mo' ? 'Monthly' : 'Annual']
+                tags: [selectedProduct.period === 'mo' ? 'Monthly' : 'Annual', selectedProduct.badge]
             })
             router.push("/sponsor/manage")
         } catch (error) {
@@ -122,64 +129,83 @@ export default function SponsorCreateOfferPage() {
                 </div>
             </header>
 
-            <main className="max-w-3xl mx-auto px-6 py-12">
+            <main className="max-w-4xl mx-auto px-6 py-12">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
                         Publish New Offer
                     </h1>
                     <p className="text-gray-600">
-                        Share your subscription with the community and earn.
+                        Select a standardized product from the Orderbook to list your service.
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Service Selection */}
+                    {/* Product Selection */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <Label className="block text-sm font-semibold text-gray-900 mb-4">
-                            Select Service
+                            Select Standard Product
                         </Label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {SERVICES.map((service) => (
-                                <button
-                                    key={service.id}
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            service: service.id,
-                                        }))
-                                    }
-                                    className={cn(
-                                        "p-4 rounded-xl border-2 text-left transition-all",
-                                        formData.service === service.id
-                                            ? "border-[#FF6B6B] bg-orange-50"
-                                            : "border-gray-100 hover:border-gray-200"
-                                    )}
-                                >
-                                    <span className="text-2xl mb-2 block">{service.icon}</span>
-                                    <span
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {PRODUCT_OPTIONS.map((product) => {
+                                const isSelected = selectedProductId === product.id
+                                return (
+                                    <button
+                                        key={product.id}
+                                        type="button"
+                                        onClick={() => handleProductSelect(product.id)}
                                         className={cn(
-                                            "font-medium",
-                                            formData.service === service.id
-                                                ? "text-[#FF6B6B]"
-                                                : "text-gray-700"
+                                            "p-4 rounded-xl border-2 text-left transition-all h-full flex flex-col justify-between",
+                                            isSelected
+                                                ? "border-[#FF6B6B] bg-orange-50"
+                                                : "border-gray-100 hover:border-gray-200 bg-white"
                                         )}
                                     >
-                                        {service.label}
-                                    </span>
-                                </button>
-                            ))}
+                                        <div>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-xs font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                    {product.badge}
+                                                </span>
+                                                {isSelected && (
+                                                    <span className="text-[#FF6B6B]">●</span>
+                                                )}
+                                            </div>
+                                            <h3 className={cn(
+                                                "font-bold mb-1",
+                                                isSelected ? "text-[#FF6B6B]" : "text-gray-900"
+                                            )}>
+                                                {product.name}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 line-clamp-2">
+                                                {product.desc}
+                                            </p>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs font-medium">
+                                            <span className="text-gray-600">
+                                                {product.period === 'yr' ? 'Annual Plan' : 'Monthly Plan'}
+                                            </span>
+                                            <span className="text-gray-400">
+                                                ~${product.defaultPrice}
+                                            </span>
+                                        </div>
+                                    </button>
+                                )
+                            })}
                         </div>
                     </div>
 
                     {/* Offer Details */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm space-y-6">
-                        <h3 className="font-semibold text-gray-900">Offer Details</h3>
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-gray-900">Custom Details</h3>
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg border border-blue-100">
+                                You can override the defaults below
+                            </span>
+                        </div>
 
                         {/* Title */}
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-2">
-                                Title (Optional)
+                                Display Title
                             </Label>
                             <Input
                                 type="text"
@@ -190,7 +216,6 @@ export default function SponsorCreateOfferPage() {
                                         title: e.target.value,
                                     }))
                                 }
-                                placeholder={`${formData.service} Premium Plan`}
                                 className="w-full px-4 py-3 h-auto rounded-xl border border-gray-200 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 outline-none transition-all"
                             />
                         </div>
@@ -198,7 +223,7 @@ export default function SponsorCreateOfferPage() {
                         {/* Description */}
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-2">
-                                Description (Optional)
+                                Description
                             </Label>
                             <Textarea
                                 value={formData.description}
@@ -208,7 +233,6 @@ export default function SponsorCreateOfferPage() {
                                         description: e.target.value,
                                     }))
                                 }
-                                placeholder="Tell members about your subscription plan..."
                                 rows={3}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
                             />
@@ -219,7 +243,7 @@ export default function SponsorCreateOfferPage() {
                             <div>
                                 <Label className="block text-sm font-medium text-gray-700 mb-2">
                                     <Users className="w-4 h-4 inline mr-1" />
-                                    Number of Seats
+                                    Total Seats (including you)
                                 </Label>
                                 <Input
                                     type="number"
@@ -256,49 +280,18 @@ export default function SponsorCreateOfferPage() {
                             </div>
                         </div>
 
-                        {/* Duration */}
-                        <div>
-                            <Label className="block text-sm font-medium text-gray-700 mb-2">
-                                <Calendar className="w-4 h-4 inline mr-1" />
-                                Subscription Period
-                            </Label>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            period: "mo",
-                                        }))
-                                    }
-                                    className={cn(
-                                        "flex-1 py-3 rounded-xl border-2 font-medium transition-all",
-                                        formData.period === "mo"
-                                            ? "border-[#FF6B6B] bg-orange-50 text-[#FF6B6B]"
-                                            : "border-gray-100 text-gray-600 hover:border-gray-200"
-                                    )}
-                                >
-                                    Monthly
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            period: "yr",
-                                        }))
-                                    }
-                                    className={cn(
-                                        "flex-1 py-3 rounded-xl border-2 font-medium transition-all",
-                                        formData.period === "yr"
-                                            ? "border-[#FF6B6B] bg-orange-50 text-[#FF6B6B]"
-                                            : "border-gray-100 text-gray-600 hover:border-gray-200"
-                                    )}
-                                >
-                                    Annual
-                                </button>
+                        {/* Auto-filled Info (Read Only) */}
+                        <div className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                            <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-gray-500" />
+                                <span className="text-gray-700">Period: <strong>{selectedProduct.period === "yr" ? "Annual" : "Monthly"}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-gray-500" />
+                                <span className="text-gray-700">Service: <strong>{selectedProduct.service}</strong></span>
                             </div>
                         </div>
+
                     </div>
 
                     {/* Auto-generated Info */}

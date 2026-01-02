@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils"
 import type { Allocation, MarketSummary, Order, OrderBookSnapshot, OrderSide, ProductId, Trade } from "@/types"
 import { PriceHistoryChart } from "@/components/shared/price-history-chart"
 
-// Mock Data Generator
+import { PRODUCT_OPTIONS } from "@/lib/shared-constants"
+
 function generateMockHistory(basePrice: number, days = 30) {
     const data = []
     let currentPrice = basePrice
@@ -33,17 +34,6 @@ function generateMockHistory(basePrice: number, days = 30) {
     }
     return data
 }
-
-const PRODUCT_OPTIONS: Array<{ id: ProductId; name: string; desc: string; badge: string }> = [
-    { id: "NETFLIX_ANNUAL", name: "Netflix 年度會員", desc: "4K / 多人家庭方案，年度授權", badge: "影音" },
-    { id: "SPOTIFY_ANNUAL", name: "Spotify 年度會員", desc: "家庭音樂方案，年度授權", badge: "音樂" },
-    { id: "YOUTUBE_PREMIUM_ANNUAL", name: "YouTube Premium 年度", desc: "無廣告 + 背景播放", badge: "影音" },
-    { id: "PRIME_VIDEO_ANNUAL", name: "Prime Video 年度", desc: "影集與電影，含會員福利", badge: "影音" },
-    { id: "DISNEY_BUNDLE_ANNUAL", name: "Disney+ Bundle 年度", desc: "Disney+ / Hulu / ESPN+ 同捆", badge: "影音" },
-    { id: "APPLE_ONE_ANNUAL", name: "Apple One 年度", desc: "全家共享 iCloud+ / Music / TV+ / Fitness+", badge: "綜合" },
-    { id: "CHATGPT_ANNUAL", name: "ChatGPT Plus 年度", desc: "AI 助手年費方案", badge: "AI" },
-    { id: "GEMINI_ANNUAL", name: "Gemini Advanced 年度", desc: "搜尋 + AI 助手年費方案", badge: "AI" },
-]
 
 function OrderBookContent() {
     const { toast } = useToast()

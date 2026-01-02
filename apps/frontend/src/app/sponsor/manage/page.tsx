@@ -14,22 +14,14 @@ export default function SponsorManagePage() {
     const { user, walletConnected } = useAuth()
     const { myOffers: offers } = useSponsor()
 
+    React.useEffect(() => {
+        if (walletConnected && user && !user.isSponsor) {
+            router.replace("/sponsor/stake")
+        }
+    }, [walletConnected, user, router])
+
     if (!walletConnected || !user?.isSponsor) {
-        return (
-            <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0b0f1a] flex items-center justify-center transition-colors">
-                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                    <p className="text-slate-600 dark:text-slate-400 mb-6 text-lg">
-                        You need to be a sponsor to manage offers.
-                    </p>
-                    <Button
-                        onClick={() => router.push("/sponsor/stake")}
-                        className="px-8 py-4 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all"
-                    >
-                        Become a Sponsor
-                    </Button>
-                </div>
-            </div>
-        )
+        return null // Return null while redirecting or waiting for auth
     }
 
     return (

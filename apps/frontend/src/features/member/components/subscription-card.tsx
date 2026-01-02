@@ -1,11 +1,23 @@
 "use client"
 
 import React, { useState } from "react"
-import { Copy, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Copy, Eye, EyeOff, ShieldCheck, Clock, AlertCircle, CheckCircle2, MessageSquareWarning, Loader2 } from "lucide-react"
 import type { Offer } from "@/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import { useMember } from "../hooks/use-member"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 
 interface SubscriptionCardProps {
     offer: Offer
@@ -13,10 +25,14 @@ interface SubscriptionCardProps {
 
 export function SubscriptionCard({ offer }: SubscriptionCardProps) {
     const { toast } = useToast()
+    const { raiseDispute, isRaisingDispute } = useMember()
     const [isRevealed, setIsRevealed] = useState(false)
+    const [showDisputeDialog, setShowDisputeDialog] = useState(false)
+    const [disputeReason, setDisputeReason] = useState("")
 
     const isExpired = offer.status === "CLOSED" || new Date() > new Date(offer.credentialDeadline)
-    const isPending = offer.status === "FULL_PENDING_CREDENTIAL"
+    const hasCredentials = offer.status === "CREDENTIAL_SUBMITTED" && !!offer.credentials
+    const isDisputed = offer.status === "DISPUTE_OPEN"
 
     // Service-specific styling
     const getServiceStyle = (service: string) => {
@@ -39,6 +55,44 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
         toast({ title: "Copied!", description: `${label} copied to clipboard.` })
     }
 
+    const handleRaiseDispute = async () => {
+        if (!disputeReason) return
+        try {
+            await raiseDispute({
+                offerId: offer.id,
+                backendOfferId: offer.backendId,
+                reason: disputeReason
+            })
+            setShowDisputeDialog(false)
+            setDisputeReason("")
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    // Determine current status badge
+    const renderStatusBadge = () => {
+        if (isDisputed) {
+            return (
+                <div className="flex items-center gap-1 bg-amber-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-amber-500/30 text-white animate-pulse">
+                    <MessageSquareWarning className="w-3 h-3" /> Under Dispute
+                </div>
+            )
+        }
+        if (isExpired) {
+            return (
+                <div className="flex items-center gap-1 bg-red-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-red-500/30 text-white">
+                    <AlertCircle className="w-3 h-3" /> Expired
+                </div>
+            )
+        }
+        return (
+            <div className="flex items-center gap-1 bg-emerald-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30 text-white">
+                <CheckCircle2 className="w-3 h-3" /> Active
+            </div>
+        )
+    }
+
     return (
         <div className="group relative w-full perspective-1000">
             {/* Main Card Container */}
@@ -57,15 +111,7 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
                         <div className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-wider">
                             {offer.period === 'mo' ? 'Monthly' : 'Annual'} Pass
                         </div>
-                        {isExpired ? (
-                            <div className="flex items-center gap-1 bg-red-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-red-500/30 text-white">
-                                <AlertCircle className="w-3 h-3" /> Expired
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1 bg-emerald-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30 text-white">
-                                <CheckCircle2 className="w-3 h-3" /> Active
-                            </div>
-                        )}
+                        {renderStatusBadge()}
                     </div>
 
                     <div className="relative z-10">
@@ -144,6 +190,66 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
                             </div>
                         )}
                     </div>
+
+                    {/* Report Problem Button (Visible only when credentials are submitted and not expired/closed) */}
+                    {hasCredentials && !isExpired && !isDisputed && (
+                        <div className="mb-4">
+                            <Dialog open={showDisputeDialog} onOpenChange={setShowDisputeDialog}>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20 h-auto py-2 text-sm"
+                                    >
+                                        <MessageSquareWarning className="w-4 h-4 mr-2" />
+                                        Report a Problem
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2 text-rose-600">
+                                            <ShieldCheck className="w-5 h-5" />
+                                            Raise a Dispute
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            If the credentials provided are invalid or stopped working, you can raise a formal dispute. This will freeze the sponsor's funds until resolved.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reason">Reason for Dispute</Label>
+                                            <Textarea
+                                                id="reason"
+                                                placeholder="e.g. Password incorrect, Account suspended..."
+                                                value={disputeReason}
+                                                onChange={(e) => setDisputeReason(e.target.value)}
+                                                className="min-h-[100px]"
+                                            />
+                                        </div>
+                                        <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg text-xs text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900">
+                                            <strong>Warning:</strong> False disputes may result in a penalty to your account reputation.
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setShowDisputeDialog(false)}>Cancel</Button>
+                                        <Button
+                                            onClick={handleRaiseDispute}
+                                            disabled={!disputeReason || isRaisingDispute}
+                                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                                        >
+                                            {isRaisingDispute ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    Submitting...
+                                                </>
+                                            ) : (
+                                                "Submit Dispute"
+                                            )}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    )}
 
                     {/* Footer Info */}
                     <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-4">
