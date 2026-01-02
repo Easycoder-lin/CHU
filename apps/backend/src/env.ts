@@ -1,8 +1,16 @@
+import "dotenv/config";
+
 import { z } from "zod/v4";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(4000),
+  DB_HOST: z.string().default("localhost"),
+  DB_PORT: z.coerce.number().default(5432),
+  DB_USERNAME: z.string().default("postgres"),
+  DB_PASSWORD: z.string().default(""),
+  DB_NAME: z.string().default("chu"),
+  DB_LOGGING: z.coerce.boolean().default(false),
 });
 
 try {

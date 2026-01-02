@@ -1,13 +1,19 @@
 
 import { Transaction } from "@mysten/sui/transactions";
-import { CreateOfferParams } from "@/lib/services/types";
-
-// 暫時的 Package ID，未來合約部署後替換
 import { CONTRACT_CONFIG } from "@/lib/contracts/config";
 
 const { PACKAGE_ID, MODULES } = CONTRACT_CONFIG;
 const MODULE_SPONSOR = MODULES.SPONSOR;
-const MODULE_MARKET = MODULES.MARKET;
+const MODULE_OFFER = MODULES.OFFER;
+
+type PublishOfferOnChainParams = {
+    sponsorBadgeId: string;
+    orderHash: Uint8Array;
+    seatCap: number;
+    pricePerSeat: number;
+    platformFeeBps: number;
+    stakeToLock: number;
+};
 
 /**
  * 建構 "Sponsor 質押" 的交易
@@ -18,7 +24,7 @@ export const buildStakePTB = (tx: Transaction, amount: number | bigint) => {
     const [coin] = tx.splitCoins(tx.gas, [amount]);
 
     tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_SPONSOR}::stake`,
+        target: `${PACKAGE_ID}::${MODULE_SPONSOR}::stake_sponsor_entry`,
         arguments: [
             coin,
             tx.object('0x6') // 假設需要 Clock 或其他參數
@@ -31,15 +37,16 @@ export const buildStakePTB = (tx: Transaction, amount: number | bigint) => {
 /**
  * 建構 "發布方案" 的交易
  */
-export const buildPublishOfferPTB = (tx: Transaction, params: CreateOfferParams) => {
-    // 純數據上鏈
+export const buildPublishOfferPTB = (tx: Transaction, params: PublishOfferOnChainParams) => {
     tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_MARKET}::publish_offer`,
+        target: `${PACKAGE_ID}::${MODULE_OFFER}::create_offer_entry`,
         arguments: [
-            tx.pure.string(params.service),
-            tx.pure.u64(params.totalSeats),
+            tx.object(params.sponsorBadgeId),
+            tx.pure.vector("u8", Array.from(params.orderHash)),
+            tx.pure.u64(params.seatCap),
             tx.pure.u64(params.pricePerSeat),
-            tx.pure.string(params.period), // 或用 u8 enum
+            tx.pure.u64(params.platformFeeBps),
+            tx.pure.u64(params.stakeToLock),
             tx.object('0x6') // Clock for creation time
         ],
     });
@@ -52,12 +59,18 @@ export const buildPublishOfferPTB = (tx: Transaction, params: CreateOfferParams)
  * 注意：實際生產環境這部分可能需要加密，或是 Off-chain 儲存
  * 這裡演示 On-chain 提交 Hash 或加密後的數據
  */
-export const buildSubmitCredentialsPTB = (tx: Transaction, offerId: string, encryptedData: string) => {
+export const buildSubmitCredentialsPTB = (
+    tx: Transaction,
+    offerId: string,
+    sponsorBadgeId: string,
+    receipt: Uint8Array
+) => {
     tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_MARKET}::submit_credentials`,
+        target: `${PACKAGE_ID}::${MODULE_OFFER}::submit_tee_receipt_entry`,
         arguments: [
             tx.object(offerId),
-            tx.pure.string(encryptedData),
+            tx.object(sponsorBadgeId),
+            tx.pure.vector("u8", Array.from(receipt)),
             tx.object('0x6') // Clock
         ],
     });
@@ -68,11 +81,18 @@ export const buildSubmitCredentialsPTB = (tx: Transaction, offerId: string, encr
 /**
  * 建構 "領回資金" 的交易
  */
-export const buildWithdrawPTB = (tx: Transaction, offerId: string) => {
+export const buildWithdrawPTB = (
+    tx: Transaction,
+    offerId: string,
+    sponsorBadgeId: string,
+    vaultObjectId: string
+) => {
     tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_MARKET}::withdraw`,
+        target: `${PACKAGE_ID}::${MODULE_OFFER}::settle_offer_entry`,
         arguments: [
             tx.object(offerId),
+            tx.object(sponsorBadgeId),
+            tx.object(vaultObjectId),
             tx.object('0x6')
         ],
     });

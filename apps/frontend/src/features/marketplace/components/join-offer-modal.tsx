@@ -5,6 +5,7 @@ import { Wallet, Loader2, CreditCard, CheckCircle2 } from "lucide-react"
 import { Offer } from "@/types"
 import { useAuth } from "@/context/auth-context"
 import { useMember } from "@/features/member/hooks/use-member"
+import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 
 interface JoinOfferModalProps {
@@ -20,6 +21,7 @@ export function JoinOfferModal({
 }: JoinOfferModalProps) {
     const { connectWallet, walletConnected } = useAuth()
     const { joinOffer, isJoining } = useMember()
+    const queryClient = useQueryClient()
     const [paymentStep, setPaymentStep] = useState<
         "connect" | "payment" | "success"
     >(walletConnected ? "payment" : "connect")
@@ -40,7 +42,9 @@ export function JoinOfferModal({
         try {
             // Simulate payment processing
             await new Promise((resolve) => setTimeout(resolve, 2000))
-            await joinOffer({ offerId: offer.id, amount: offer.price })
+            await joinOffer({ offerId: offer.id, backendOfferId: offer.backendId, amount: offer.price })
+            queryClient.invalidateQueries({ queryKey: ["market-offers"] })
+            queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] })
             setPaymentStep("success")
             // Auto-close modal after showing success
             setTimeout(() => {

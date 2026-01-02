@@ -54,6 +54,20 @@ const STATUS_CONFIG: Record<
         text: "text-purple-700",
         border: "border-purple-200",
     },
+    PENDING: {
+        label: "Pending",
+        icon: Clock,
+        bg: "bg-slate-50",
+        text: "text-slate-700",
+        border: "border-slate-200",
+    },
+    FAILED: {
+        label: "Failed",
+        icon: XCircle,
+        bg: "bg-rose-50",
+        text: "text-rose-700",
+        border: "border-rose-200",
+    },
     CLOSED: {
         label: "Completed",
         icon: XCircle,

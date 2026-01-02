@@ -5,6 +5,7 @@ import type MessageResponse from "../interfaces/message-response.js";
 import emojis from "./emojis.js";
 import orderbook from "./orderbook.js";
 import markets from "./markets.js";
+import offers from "./offers.js";
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.get<object, MessageResponse>("/", (req, res) => {
 router.use("/emojis", emojis);
 router.use("/orderbook", orderbook);
 router.use("/markets", markets);
+router.use("/offers", offers);
 
 export default router;

@@ -33,7 +33,7 @@ export function OrderCard({
   offer: Offer
   hasReportedProblem: boolean
 }) {
-  const { raiseDispute, isRaisingDispute: isReporting } = useMember()
+  const { raiseDispute, isRaisingDispute: isReporting, claimSlash, isClaimingSlash } = useMember()
   const [showCredentials, setShowCredentials] = useState(false)
 
   const canViewCredentials =
@@ -50,7 +50,15 @@ export function OrderCard({
 
   const handleReport = async () => {
     try {
-      await raiseDispute({ offerId: offer.id, reason: "Issue reported by user" })
+      await raiseDispute({ offerId: offer.id, backendOfferId: offer.backendId, reason: "Issue reported by user" })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleClaimSlash = async () => {
+    try {
+      await claimSlash({ backendOfferId: offer.backendId })
     } catch (error) {
       console.error(error)
     }
@@ -194,14 +202,33 @@ export function OrderCard({
 
         {/* Dispute open */}
         {offer.status === "DISPUTE_OPEN" && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
-            <div>
-              <p className="font-medium text-red-800">Dispute in Progress</p>
-              <p className="text-sm text-red-600">
-                Your issue is being reviewed.
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div>
+                <p className="font-medium text-red-800">Dispute in Progress</p>
+                <p className="text-sm text-red-600">
+                  Slash claim is ready to be collected.
+                </p>
+              </div>
             </div>
+            <Button
+              onClick={handleClaimSlash}
+              disabled={isClaimingSlash}
+              className="w-full py-3 h-auto rounded-xl font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isClaimingSlash ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Claiming...
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4" />
+                  Claim Slash
+                </>
+              )}
+            </Button>
           </div>
         )}
 

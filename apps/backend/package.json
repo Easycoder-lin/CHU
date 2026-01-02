@@ -16,13 +16,20 @@
     "build": "tsc",
     "lint": "eslint --fix src test",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:revert": "tsx src/db/revert.ts",
+    "db:generate": "pnpm exec typeorm-ts-node-esm -d src/db/data-source.ts migration:generate src/migrations/GeneratedMigration"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "dotenv": "^16.6.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -35,6 +42,7 @@
     "eslint": "^9.38.0",
     "eslint-plugin-format": "^1.0.2",
     "supertest": "^7.1.4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.6"

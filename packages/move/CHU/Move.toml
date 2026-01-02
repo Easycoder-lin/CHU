@@ -18,13 +18,14 @@ edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
+
 chu = "0x0"
-published-at = "0x747280d5b09b3c6415a624fa13f0bd45e05782f0704d08041729b78a770b5dd9"
-sponsorBadge = "0x7a619184e7f419108fd901c7d3034e6a22179dd0f90703b73a81d169d5cec8b6"
-offer = "0xed775e0b6546f3de89b31b119610d94d3995bf346750f5ad997d7bf4bf3cb0a6"
-seatnft = "0x2d34e768388d1bce01f87f05d3c21e992cdb9e62e9a530ea29a59d08c2a8e944"
-platformVault = "0x77f2c0fedcfe3d85db31b56388978d19301a8e54153569dad2908a581ff2e0cb"
-adminCap = "0x278ab175e822ef894bb6e4d5c8260be1611d7ec04602465e5a2ac98d7266ec95"
+published-at = "0xedc20852fba479e27d10cb05ca415cbb608dcb4fddc1f0749fbfa3e4c93c71b7"
+sponsorBadge = ""
+offer = ""
+seatnft = ""
+platformVault = ""
+adminCap = ""
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
 # alice = "0xA11CE"

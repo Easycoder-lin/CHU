@@ -38,7 +38,10 @@ export const useSponsor = () => {
 
     const publishOfferMutation = useMutation({
         mutationFn: async (params: CreateOfferParams) => {
-            return await service.publishOffer(params, signer);
+            if (!account?.address) {
+                throw new Error("Wallet address required to publish offers");
+            }
+            return await service.publishOffer({ ...params, sponsorAddress: account.address }, signer);
         },
         onSuccess: () => {
             toast({ title: "Offer Published!", description: "Your offer is now on the market." });
@@ -52,8 +55,15 @@ export const useSponsor = () => {
 
 
     const submitCredentialsMutation = useMutation({
-        mutationFn: async ({ offerId, credentials }: { offerId: string, credentials: { username: string, password: string } }) => {
-            return await service.submitCredentials(offerId, credentials, signer);
+        mutationFn: async ({
+            offerId,
+            credentials,
+            backendOfferId,
+        }: { offerId: string, credentials: { username: string, password: string }, backendOfferId?: string }) => {
+            if (!account?.address) {
+                throw new Error("Wallet address required to submit credentials");
+            }
+            return await service.submitCredentials(offerId, credentials, signer, account.address, backendOfferId);
         },
         onSuccess: () => {
             toast({ title: "Credentials Submitted!", description: "Members can now access the service." });
@@ -65,8 +75,11 @@ export const useSponsor = () => {
     });
 
     const withdrawMutation = useMutation({
-        mutationFn: async (offerId: string) => {
-            return await service.withdraw(offerId, signer);
+        mutationFn: async ({ offerId, backendOfferId }: { offerId: string, backendOfferId?: string }) => {
+            if (!account?.address) {
+                throw new Error("Wallet address required to withdraw");
+            }
+            return await service.withdraw(offerId, signer, account.address, backendOfferId);
         },
         onSuccess: () => {
             toast({ title: "Funds Withdrawn!", description: "The offer is now closed." });

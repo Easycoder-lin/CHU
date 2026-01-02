@@ -38,6 +38,16 @@ Development utilities:
 pnpm install
 ```
 
+## Repo quick start
+
+From repo root you can run:
+
+```
+./scripts/dev.sh
+```
+
+This starts Postgres (via Docker if available), runs migrations, and launches backend + frontend.
+
 ## Lint
 
 ```
@@ -54,4 +64,12 @@ pnpm run test
 
 ```
 pnpm run dev
+```
+
+## Database
+
+Set up Postgres credentials in `.env` (see `.env.sample`) and run migrations:
+
+```
+pnpm run db:migrate
 ```

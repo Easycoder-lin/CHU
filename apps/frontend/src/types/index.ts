@@ -1,5 +1,13 @@
 export type ServiceType = 'Netflix' | 'YouTube' | 'Spotify' | 'Disney+' | 'HBO Max' | 'Apple One';
-export type OfferStatus = 'LISTED' | 'FULL_PENDING_CREDENTIAL' | 'CREDENTIAL_SUBMITTED' | 'DISPUTE_OPEN' | 'RELEASABLE' | 'CLOSED';
+export type OfferStatus =
+    | 'LISTED'
+    | 'FULL_PENDING_CREDENTIAL'
+    | 'CREDENTIAL_SUBMITTED'
+    | 'DISPUTE_OPEN'
+    | 'RELEASABLE'
+    | 'CLOSED'
+    | 'PENDING'
+    | 'FAILED';
 export type UserMode = 'sponsor' | 'member' | 'login' | null;
 export type OrderSide = 'BUY' | 'SELL';
 export type OrderStatus = 'OPEN' | 'PARTIAL' | 'FILLED' | 'CANCELLED';
@@ -17,6 +25,8 @@ export type AllocationState = 'ACTIVE' | 'EXITED' | 'TERMINATED';
 
 export interface Offer {
     id: string;
+    backendId?: string;
+    chainOfferObjectId?: string;
     service: ServiceType;
     title: string;
     description: string;

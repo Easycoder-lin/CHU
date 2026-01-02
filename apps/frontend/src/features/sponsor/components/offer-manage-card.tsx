@@ -22,6 +22,7 @@ function getServiceIcon(service: string): string {
     return icons[service] || "📱"
 }
 import { useSponsor } from "@/features/sponsor/hooks/use-sponsor"
+import { useMember } from "@/features/member/hooks/use-member"
 import { Offer } from "@/types"
 import { OfferStatusBadge } from "@/components/shared/offer-status-badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils"
 
 export function OfferManageCard({ offer }: { offer: Offer }) {
     const { submitCredentials, withdraw, isSubmittingCredentials: isSubmitting, isWithdrawing } = useSponsor()
+    const { slashOffer, isSlashingOffer, claimSlash, isClaimingSlash } = useMember()
     const [showCredentialForm, setShowCredentialForm] = useState(false)
     const [credentials, setCredentials] = useState({
         username: "",
@@ -43,7 +45,11 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
         if (!confirmed || !credentials.username || !credentials.password) return
 
         try {
-            await submitCredentials({ offerId: offer.id, credentials: { username: credentials.username, password: credentials.password } })
+            await submitCredentials({
+                offerId: offer.id,
+                backendOfferId: offer.backendId,
+                credentials: { username: credentials.username, password: credentials.password },
+            })
             setShowCredentialForm(false)
         } catch (error) {
             console.error(error)
@@ -52,7 +58,23 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
     const handleWithdraw = async () => {
         try {
-            await withdraw(offer.id)
+            await withdraw({ offerId: offer.id, backendOfferId: offer.backendId })
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    const handleSlashOffer = async () => {
+        try {
+            await slashOffer({ offerId: offer.id, backendOfferId: offer.backendId })
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    const handleClaimSlash = async () => {
+        try {
+            await claimSlash({ backendOfferId: offer.backendId })
         } catch (error) {
             console.error(error)
         }
@@ -60,6 +82,10 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
     const canSubmitCredentials = offer.status === "FULL_PENDING_CREDENTIAL"
     const canWithdraw = offer.status === "RELEASABLE"
+    const canSlashOffer =
+        offer.status === "FULL_PENDING_CREDENTIAL" &&
+        !!offer.credentialDeadline &&
+        new Date() > new Date(offer.credentialDeadline)
     const showCredentials =
         offer.status === "CREDENTIAL_SUBMITTED" && offer.credentials
 
@@ -121,6 +147,26 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                         >
                             Submit Credentials
                         </Button>
+                        {canSlashOffer && (
+                            <Button
+                                onClick={handleSlashOffer}
+                                disabled={isSlashingOffer}
+                                variant="outline"
+                                className="mt-3 px-6 py-3 h-auto border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                            >
+                                {isSlashingOffer ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Slashing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertTriangle className="w-4 h-4 mr-2" />
+                                        Slash Offer
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -269,14 +315,33 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
 
                 {/* Dispute status */}
                 {offer.status === "DISPUTE_OPEN" && (
-                    <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900">
-                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-500" />
-                        <div>
-                            <p className="font-medium text-red-800 dark:text-red-300">Dispute in Progress</p>
-                            <p className="text-sm text-red-600 dark:text-red-400">
-                                A member has reported an issue with the credentials.
-                            </p>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900">
+                            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-500" />
+                            <div>
+                                <p className="font-medium text-red-800 dark:text-red-300">Dispute in Progress</p>
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                    A member has reported an issue with the credentials.
+                                </p>
+                            </div>
                         </div>
+                        <Button
+                            onClick={handleClaimSlash}
+                            disabled={isClaimingSlash}
+                            className="w-full py-3 h-auto rounded-xl font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isClaimingSlash ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Claiming...
+                                </>
+                            ) : (
+                                <>
+                                    <AlertTriangle className="w-4 h-4" />
+                                    Claim Slash
+                                </>
+                            )}
+                        </Button>
                     </div>
                 )}
 

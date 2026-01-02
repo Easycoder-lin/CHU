@@ -146,13 +146,24 @@ export class MockSponsorService implements ISponsorService {
         return "0xMockTxDigest_Publish_" + randomId();
     }
 
-    async submitCredentials(offerId: string, credentials: { username: ""; password: ""; }, signer?: TransactionSigner): Promise<string> {
+    async submitCredentials(
+        offerId: string,
+        credentials: { username: ""; password: ""; },
+        signer?: TransactionSigner,
+        sponsorAddress?: string,
+        backendOfferId?: string
+    ): Promise<string> {
         await delay(1500);
         db.updateOfferStatus(offerId, "CREDENTIAL_SUBMITTED");
         return "0xMockTxDigest_SubmitCreds";
     }
 
-    async withdraw(offerId: string, signer?: TransactionSigner): Promise<string> {
+    async withdraw(
+        offerId: string,
+        signer?: TransactionSigner,
+        sponsorAddress?: string,
+        backendOfferId?: string
+    ): Promise<string> {
         await delay(1500);
         db.updateOfferStatus(offerId, "CLOSED");
         return "0xMockTxDigest_Withdraw";
@@ -165,7 +176,12 @@ export class MockSponsorService implements ISponsorService {
 }
 
 export class MockMemberService implements IMemberService {
-    async joinOffer(offerId: string, paymentAmount: number, signer?: TransactionSigner): Promise<string> {
+    async joinOffer(
+        offerId: string,
+        paymentAmount: number,
+        signer?: TransactionSigner,
+        backendOfferId?: string
+    ): Promise<string> {
         await delay(2000);
         const offer = db.findOffer(offerId);
         if (offer) {
@@ -188,9 +204,37 @@ export class MockMemberService implements IMemberService {
         return db.getOffers();
     }
 
-    async raiseDispute(offerId: string, reason: string, signer?: TransactionSigner): Promise<string> {
+    async raiseDispute(
+        offerId: string,
+        reason: string,
+        signer?: TransactionSigner,
+        backendOfferId?: string
+    ): Promise<string> {
         await delay(1500);
         db.updateOfferStatus(offerId, "DISPUTE_OPEN");
         return "0xMockTxDigest_Dispute";
+    }
+
+    async slashOffer(
+        offerId: string,
+        signer?: TransactionSigner,
+        backendOfferId?: string
+    ): Promise<string> {
+        await delay(1500);
+        db.updateOfferStatus(offerId, "DISPUTE_OPEN");
+        return "0xMockTxDigest_Slash";
+    }
+
+    async claimSlash(
+        params: {
+            ownerAddress?: string;
+            poolObjectId?: string;
+            claimObjectId?: string;
+            backendOfferId?: string;
+        },
+        signer?: TransactionSigner
+    ): Promise<string> {
+        await delay(1500);
+        return "0xMockTxDigest_ClaimSlash";
     }
 }

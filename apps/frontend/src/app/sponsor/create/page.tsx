@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
     ArrowLeft,
@@ -49,8 +49,18 @@ export default function SponsorCreateOfferPage() {
     })
 
 
-    const now = new Date()
-    const credentialDeadline = new Date(now.getTime() + 86400000) // +24 hours
+    const [previewDates, setPreviewDates] = useState<{
+        createdAt: Date
+        credentialDeadline: Date
+    } | null>(null)
+
+    useEffect(() => {
+        const createdAt = new Date()
+        setPreviewDates({
+            createdAt,
+            credentialDeadline: new Date(createdAt.getTime() + 86400000), // +24 hours
+        })
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -299,16 +309,25 @@ export default function SponsorCreateOfferPage() {
                                 <div className="flex items-center gap-2">
                                     <Calendar className="w-4 h-4 text-blue-600" />
                                     <span className="text-blue-800">
-                                        <strong>Created:</strong> {now.toLocaleDateString()}{" "}
-                                        {now.toLocaleTimeString()}
+                                        <strong>Created:</strong>{" "}
+                                        {previewDates
+                                            ? previewDates.createdAt.toLocaleDateString()
+                                            : "--"}{" "}
+                                        {previewDates
+                                            ? previewDates.createdAt.toLocaleTimeString()
+                                            : "--"}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-4 h-4 text-blue-600" />
                                     <span className="text-blue-800">
                                         <strong>Credential Deadline:</strong>{" "}
-                                        {credentialDeadline.toLocaleDateString()}{" "}
-                                        {credentialDeadline.toLocaleTimeString()}
+                                        {previewDates
+                                            ? previewDates.credentialDeadline.toLocaleDateString()
+                                            : "--"}{" "}
+                                        {previewDates
+                                            ? previewDates.credentialDeadline.toLocaleTimeString()
+                                            : "--"}
                                     </span>
                                 </div>
                                 <p className="text-blue-600">
