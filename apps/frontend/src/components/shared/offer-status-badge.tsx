@@ -26,8 +26,8 @@ const STATUS_CONFIG: Record<
         text: "text-emerald-700",
         border: "border-emerald-200",
     },
-    FULL_PENDING_CREDENTIAL: {
-        label: "Awaiting Credentials",
+    WAITING_FOR_CREDENTIAL: {
+        label: "Waiting for Credentials",
         icon: Clock,
         bg: "bg-amber-50",
         text: "text-amber-700",

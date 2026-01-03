@@ -9,12 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/auth-context"
+import { useSignAndExecuteTransaction, useCurrentAccount } from "@mysten/dapp-kit"
+import { Transaction } from "@mysten/sui/transactions"
+import { SuiClient } from "@mysten/sui/client"
 import { useToast } from "@/hooks/use-toast"
 import { fetchAllocations, fetchMarkets } from "@/lib/market-api"
 import { cancelOrder, fetchOrderBook, fetchOrders, fetchTrades, placeOrder } from "@/lib/orderbook-api"
 import { cn } from "@/lib/utils"
 import type { Allocation, MarketSummary, Order, OrderBookSnapshot, OrderSide, ProductId, Trade } from "@/types"
 import { PriceHistoryChart } from "@/components/shared/price-history-chart"
+import { buildLockFundsPTB, buildRefundLockPTB } from "@/lib/ptb/vault"
+import { CONTRACT_CONFIG } from "@/lib/contracts/config"
 
 import { PRODUCT_OPTIONS } from "@/lib/shared-constants"
 
@@ -38,14 +43,20 @@ function generateMockHistory(basePrice: number, days = 30) {
 function OrderBookContent() {
     const { toast } = useToast()
     const { currentMode, walletAddress, walletConnected, user } = useAuth()
-    const isSponsor = user?.isSponsor
+    const account = useCurrentAccount()
+    const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction()
+    const suiClient = useMemo(() => {
+        return new SuiClient({
+            url: process.env.NEXT_PUBLIC_SUI_NODE_URL || "https://fullnode.testnet.sui.io:443"
+        })
+    }, [])
     const searchParams = useSearchParams()
     const router = useRouter()
     const [book, setBook] = useState<OrderBookSnapshot | null>(null)
     const [orders, setOrders] = useState<Order[]>([])
     const [trades, setTrades] = useState<Trade[]>([])
     const [side, setSide] = useState<OrderSide>("BUY")
-    const [price, setPrice] = useState("120")
+    const [price, setPrice] = useState("")
     const [quantity, setQuantity] = useState("1")
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -75,7 +86,6 @@ function OrderBookContent() {
     }, [product])
 
     const actor = currentMode === "sponsor" ? "SPONSOR" : "MEMBER"
-    const canSell = actor === "SPONSOR"
     const selectedProduct = PRODUCT_OPTIONS.find((p) => p.id === product) ?? PRODUCT_OPTIONS[0]
     const marketMap = useMemo(() => Object.fromEntries(markets.map((m) => [m.id, m])), [markets])
     const filteredProducts = useMemo(
@@ -143,6 +153,43 @@ function OrderBookContent() {
         loadAllocations()
     }, [loadAllocations])
 
+    const extractLockObjectId = (result: any): string | undefined => {
+        const changes = Array.isArray(result?.objectChanges)
+            ? result.objectChanges
+            : Array.isArray(result?.effects?.objectChanges)
+                ? result.effects.objectChanges
+                : []
+        if (changes.length === 0) return undefined
+        const lockType = `${CONTRACT_CONFIG.PACKAGE_ID}::${CONTRACT_CONFIG.MODULES.VAULT}::MemberLock`
+        const created = changes.find((change) => {
+            if (change?.type !== "created") return false
+            if (change?.objectType === lockType) return true
+            return typeof change?.objectType === "string"
+                && change.objectType.endsWith("::vault::MemberLock")
+        })
+        return created?.objectId
+    }
+
+    const fetchObjectChangesForDigest = async (digest: string) => {
+        let lastError: unknown = null
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+            try {
+                return await suiClient.getTransactionBlock({
+                    digest,
+                    options: {
+                        showEffects: true,
+                        showObjectChanges: true,
+                        showInput: true,
+                    },
+                })
+            } catch (error) {
+                lastError = error
+                await new Promise((resolve) => setTimeout(resolve, 800))
+            }
+        }
+        throw lastError
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!walletConnected) {
@@ -165,36 +212,60 @@ function OrderBookContent() {
             return
         }
 
-        if (side === "SELL" && !canSell) {
-            toast({
-                title: "只有 Sponsor 可以掛賣單",
-                description: "請切換為 Sponsor 模式或改用買單。",
-                variant: "destructive",
-            })
-            return
-        }
-
-        if (side === "SELL" && !isSponsor) {
-            toast({
-                title: "需要 Sponsor 資格",
-                description: "請先完成質押取得 Sponsor 資格，再嘗試掛賣單。",
-                variant: "destructive",
-            })
-            return
-        }
-
         try {
             setLoading(true)
+            let lockPayload: {
+                lockAmount?: number
+                lockAsset?: string
+                lockTxDigest?: string
+                lockObjectId?: string
+            } = {}
+
+            if (side === "BUY" && actor === "MEMBER") {
+                if (!account?.address) {
+                    throw new Error("Wallet address required to lock funds")
+                }
+                const baseAmount = Math.round(numericPrice) * Math.max(1, Math.floor(numericQty))
+                const tx = new Transaction()
+                buildLockFundsPTB(tx, BigInt(baseAmount), account.address)
+                const lockResult = await signAndExecuteTransaction({
+                    transaction: tx,
+                    options: { showObjectChanges: true, showEffects: true }
+                })
+                console.log("lockResult", lockResult)
+                let lockObjectId = extractLockObjectId(lockResult)
+                if (!lockObjectId && lockResult?.digest) {
+                    try {
+                        const txBlock = await fetchObjectChangesForDigest(lockResult.digest)
+                        console.log("lockResult txBlock", txBlock)
+                        lockObjectId = extractLockObjectId(txBlock)
+                    } catch (error) {
+                        console.warn("Failed to fetch lock tx changes", error)
+                    }
+                }
+                if (!lockObjectId) {
+                    throw new Error("Failed to locate escrow lock object")
+                }
+                lockPayload = {
+                    lockAmount: baseAmount,
+                    lockAsset: "SUI",
+                    lockTxDigest: lockResult.digest,
+                    lockObjectId
+                }
+            }
+
+            const orderSide: OrderSide = "BUY"
             await placeOrder({
                 product,
-                side,
+                side: orderSide,
                 price: numericPrice,
                 quantity: numericQty,
                 actor,
                 walletAddress,
+                ...lockPayload,
             })
             toast({
-                title: side === "BUY" ? "買單已送出" : "賣單已送出",
+                title: "買單已送出",
                 description: "已寫入訂單簿，若價格可成交會即時撮合。",
             })
             setQuantity("1")
@@ -385,7 +456,7 @@ function OrderBookContent() {
                                 rows={book?.bids ?? []}
                                 side="BUY"
                                 onSelect={(p) => {
-                                    setSide("SELL")
+                                    setSide("BUY")
                                     setPrice(p.toString())
                                 }}
                             />
@@ -403,19 +474,12 @@ function OrderBookContent() {
                                 Place Order
                             </CardTitle>
                             <CardDescription className="text-slate-500 dark:text-slate-400">
-                                {actor === "SPONSOR" ? "Selling as Sponsor" : "Buying as Member"}
+                                {actor === "SPONSOR" ? "Buying as Sponsor" : "Buying as Member"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-2 mb-4">
-                                <TogglePill active={side === "BUY"} onClick={() => setSide("BUY")} label="Buy (Bid)" tone="buy" />
-                                <TogglePill
-                                    active={side === "SELL"}
-                                    onClick={() => canSell && setSide("SELL")}
-                                    label="Sell (Ask)"
-                                    tone="sell"
-                                    disabled={!canSell}
-                                />
+                                <TogglePill active onClick={() => setSide("BUY")} label="Buy (Bid)" tone="buy" />
                             </div>
 
                             <div className="mb-6 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
@@ -434,20 +498,6 @@ function OrderBookContent() {
                                         disabled={!bestAsk}
                                     >
                                         Buy @ Best Ask
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="flex-1 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-white dark:bg-slate-900"
-                                        onClick={() => {
-                                            if (bestBid && canSell && isSponsor) {
-                                                setSide("SELL");
-                                                setPrice(bestBid.toString());
-                                            }
-                                        }}
-                                        disabled={!bestBid || !canSell || !isSponsor}
-                                    >
-                                        Sell @ Best Bid
                                     </Button>
                                 </div>
                             </div>
@@ -484,14 +534,17 @@ function OrderBookContent() {
                                     type="submit"
                                     className={cn(
                                         "w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02]",
-                                        side === "BUY"
-                                            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-200"
-                                            : "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-200",
+                                        "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-200",
                                     )}
                                     disabled={loading}
                                 >
-                                    {loading ? "Processing..." : side === "BUY" ? "Place Buy Order" : "Place Sell Order"}
+                                    {loading ? "Processing..." : "Place Buy Order"}
                                 </Button>
+                                {actor === "MEMBER" && (
+                                    <p className="text-xs text-emerald-700">
+                                        Buy orders lock funds immediately in on-chain escrow.
+                                    </p>
+                                )}
                             </form>
                         </CardContent>
                     </Card>
@@ -582,6 +635,16 @@ function OrderBookContent() {
                                                     onClick={async () => {
                                                         try {
                                                             await cancelOrder(product, order.id)
+                                                            if (
+                                                                order.side === "BUY"
+                                                                && order.lockObjectId
+                                                                && order.lockStatus !== "SETTLED"
+                                                                && account?.address
+                                                            ) {
+                                                                const refundTx = new Transaction()
+                                                                buildRefundLockPTB(refundTx, order.lockObjectId, account.address)
+                                                                await signAndExecuteTransaction({ transaction: refundTx })
+                                                            }
                                                             toast({ title: "Order Cancelled" })
                                                             loadData()
                                                         } catch (error) {

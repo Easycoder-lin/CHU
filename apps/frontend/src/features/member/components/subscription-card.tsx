@@ -30,9 +30,12 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
     const [showDisputeDialog, setShowDisputeDialog] = useState(false)
     const [disputeReason, setDisputeReason] = useState("")
 
-    const isExpired = offer.status === "CLOSED" || new Date() > new Date(offer.credentialDeadline)
+    const isWaiting = offer.status === "WAITING_FOR_CREDENTIAL"
+    const isExpired = offer.status === "CLOSED"
+        || (offer.credentialDeadline && new Date() > offer.credentialDeadline && isWaiting)
     const hasCredentials = offer.status === "CREDENTIAL_SUBMITTED" && !!offer.credentials
     const isDisputed = offer.status === "DISPUTE_OPEN"
+    const isActive = offer.status === "CREDENTIAL_SUBMITTED" || offer.status === "RELEASABLE"
 
     // Service-specific styling
     const getServiceStyle = (service: string) => {
@@ -86,9 +89,16 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
                 </div>
             )
         }
+        if (isWaiting) {
+            return (
+                <div className="flex items-center gap-1 bg-amber-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-amber-500/30 text-white">
+                    <Clock className="w-3 h-3" /> Waiting for credentials
+                </div>
+            )
+        }
         return (
             <div className="flex items-center gap-1 bg-emerald-500/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30 text-white">
-                <CheckCircle2 className="w-3 h-3" /> Active
+                <CheckCircle2 className="w-3 h-3" /> {isActive ? "Active" : "Pending"}
             </div>
         )
     }
@@ -271,7 +281,11 @@ export function SubscriptionCard({ offer }: SubscriptionCardProps) {
                     <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-4">
                         <div className="flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />
-                            <span>Expires {new Date(offer.credentialDeadline).toLocaleDateString()}</span>
+                            <span>
+                                {offer.credentialDeadline
+                                    ? `Expires ${offer.credentialDeadline.toLocaleDateString()}`
+                                    : "Awaiting sponsor deadline"}
+                            </span>
                         </div>
                         <div className="font-medium text-slate-900 dark:text-slate-300">
                             ${offer.price} / {offer.period}

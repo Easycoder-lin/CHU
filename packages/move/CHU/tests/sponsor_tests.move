@@ -81,6 +81,68 @@ module chu::sponsor_tests {
         test_scenario::end(scenario);
     }
 
+    #[test]
+    fun test_offer_create_has_no_escrow() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            1,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        assert!(offer::escrow_value(&offer) == 0, 0);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_join_locks_into_escrow() {
+        let mut scenario = test_scenario::begin(@0xA);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let mut gas = coin::mint_for_testing<SUI>(10_000, ctx);
+        let stake = coin::split(&mut gas, 2_000, ctx);
+        let mut badge = sponsor::stake_sponsor_for_testing(stake, 1, ctx);
+
+        let mut offer = offer::create_offer_for_testing(
+            &mut badge,
+            sample_order_hash(),
+            2,
+            1_000,
+            0,
+            1_000,
+            1,
+            ctx,
+        );
+
+        test_scenario::next_tx(&mut scenario, @0xB);
+        let ctx = test_scenario::ctx(&mut scenario);
+        let payment_one = coin::split(&mut gas, 1_000, ctx);
+        let seat_one = member::join_offer_for_testing(&mut offer, payment_one, 2, ctx);
+
+        assert!(offer::escrow_value(&offer) == 1_000, 0);
+
+        let sender = test_scenario::sender(&scenario);
+        transfer::public_transfer(gas, sender);
+        transfer::public_transfer(offer, sender);
+        transfer::public_transfer(badge, sender);
+        transfer::public_transfer(seat_one, sender);
+        test_scenario::end(scenario);
+    }
+
     // Slash and claim flow test.
     #[test]
     fun test_slash_and_claim_flow() {
@@ -232,6 +294,7 @@ module chu::sponsor_tests {
         assert!(coin::value(&refund) == 1_000, 0);
         assert!(offer::seats_sold(&offer) == 0, 1);
         assert!(!offer::is_member(&offer, @0xB), 2);
+        assert!(offer::escrow_value(&offer) == 0, 3);
 
         let sender = test_scenario::sender(&scenario);
         transfer::public_transfer(gas, sender);

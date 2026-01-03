@@ -97,6 +97,7 @@ export const useSponsor = () => {
         queryKey: ["my-offers", account?.address],
         queryFn: () => service.getMyOffers(account?.address || ""),
         enabled: !!account?.address,
+        refetchInterval: 10000,
     });
 
     return {
@@ -111,6 +112,8 @@ export const useSponsor = () => {
         withdraw: withdrawMutation.mutateAsync,
         isWithdrawing: withdrawMutation.isPending,
         myOffers: myOffersQuery.data || [],
-        isLoadingMyOffers: myOffersQuery.isLoading
+        isLoadingMyOffers: myOffersQuery.isLoading,
+        isErrorMyOffers: myOffersQuery.isError,
+        myOffersError: myOffersQuery.error
     };
 }

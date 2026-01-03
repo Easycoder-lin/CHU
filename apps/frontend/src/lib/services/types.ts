@@ -54,7 +54,16 @@ export interface IMemberService {
         offerId: string,
         paymentAmount: number,
         signer?: TransactionSigner,
+        walletAddress?: string,
         backendOfferId?: string
+    ): Promise<string>;
+
+    getPendingSettlements(address: string): Promise<import("@/types").PendingSettlement[]>;
+
+    settleMatchedTrade(
+        settlement: import("@/types").PendingSettlement,
+        signer?: TransactionSigner,
+        walletAddress?: string
     ): Promise<string>;
 
     getMySubscriptions(address: string): Promise<Offer[]>;

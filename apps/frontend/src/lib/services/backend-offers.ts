@@ -47,7 +47,9 @@ const mapStatus = (status: string): OfferStatus => {
         case "OPEN":
             return "LISTED";
         case "FULL":
-            return "FULL_PENDING_CREDENTIAL";
+            return "WAITING_FOR_CREDENTIAL";
+        case "WAITING_FOR_CREDENTIAL":
+            return "WAITING_FOR_CREDENTIAL";
         case "CREDENTIALS_SUBMITTED":
             return "CREDENTIAL_SUBMITTED";
         case "SETTLED":
@@ -61,7 +63,7 @@ const mapStatus = (status: string): OfferStatus => {
 
 export const mapBackendOffer = (offer: BackendOffer): Offer => {
     const createdAt = new Date(offer.createdAt);
-    const credentialDeadline = offer.credentialDeadline ? new Date(offer.credentialDeadline) : createdAt;
+    const credentialDeadline = offer.credentialDeadline ? new Date(offer.credentialDeadline) : null;
 
     return {
         id: offer.offerObjectId || offer.id,

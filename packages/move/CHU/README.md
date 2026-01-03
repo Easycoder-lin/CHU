@@ -167,25 +167,16 @@ sui client call \
 6. Initialize the vault (record `VAULT_ID` and `ADMIN_CAP_ID`):
 
 ```sh
-sui client call \
-  --package 0xYOUR_PACKAGE_ID \
-  --module vault \
-  --function init_vault_entry \
+sui client ptb \
+  --move-call 0xYOUR_PACKAGE_ID::vault::init_vault_entry \
+  --assign init_res \
+  --transfer-objects "[init_res.0, init_res.1]" @0xYOUR_WALLET_ADDRESS \
   --gas-budget 100000000
+
 ```
 
-7. Submit the TEE receipt:
 
-```sh
-sui client call \
-  --package 0xYOUR_PACKAGE_ID \
-  --module offer \
-  --function submit_tee_receipt_entry \
-  --args <OFFER_ID> <BADGE_ID> 0xdeadbeef 0x6 \
-  --gas-budget 100000000
-```
-
-8. Settle (after the settlement delay):
+1. Settle (after the settlement delay):
 
 ```sh
 sui client call \

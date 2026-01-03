@@ -1,12 +1,12 @@
 import express from "express";
 import { z } from "zod";
 
-import { PRODUCT_IDS, orderBookService } from "../services/orderbook.js";
+import { orderBookService, PRODUCT_IDS } from "../services/orderbook.js";
 
 const router = express.Router();
 
-router.get("/", (_req, res) => {
-  const markets = orderBookService.getMarketSummaries();
+router.get("/", async (_req, res) => {
+  const markets = await orderBookService.getMarketSummaries();
   res.json({ markets });
 });
 
@@ -15,12 +15,12 @@ const allocationsQuery = z.object({
   product: z.enum(PRODUCT_IDS).optional(),
 });
 
-router.get("/allocations", (req, res) => {
+router.get("/allocations", async (req, res) => {
   const parsed = allocationsQuery.safeParse(req.query);
   if (!parsed.success) {
     return res.status(400).json({ message: "Invalid query params", issues: parsed.error.issues });
   }
-  const allocations = orderBookService.getAllocationsByWallet(parsed.data.wallet, parsed.data.product);
+  const allocations = await orderBookService.getAllocationsByWallet(parsed.data.wallet, parsed.data.product);
   res.json({ allocations });
 });
 

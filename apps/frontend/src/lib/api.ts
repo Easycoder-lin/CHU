@@ -21,7 +21,20 @@ export async function apiRequest<T = any>(
     })
 
     if (!response.ok) {
-        throw new Error(`API Request failed: ${response.statusText}`)
+        let details = ""
+        try {
+            const contentType = response.headers.get("content-type") || ""
+            if (contentType.includes("application/json")) {
+                const body = await response.json()
+                details = body?.message ? ` - ${body.message}` : ` - ${JSON.stringify(body)}`
+            } else {
+                const bodyText = await response.text()
+                details = bodyText ? ` - ${bodyText}` : ""
+            }
+        } catch {
+            // ignore parse errors
+        }
+        throw new Error(`API Request failed: ${response.status} ${response.statusText}${details}`)
     }
 
     // Handle empty responses

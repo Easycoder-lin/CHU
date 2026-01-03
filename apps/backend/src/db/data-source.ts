@@ -5,6 +5,9 @@ import { DataSource } from "typeorm";
 
 import { env } from "../env.js";
 import { Offer } from "../entities/Offer.js";
+import { MemberLock } from "../entities/MemberLock.js";
+import { OrderbookOrder } from "../entities/OrderbookOrder.js";
+import { OrderbookTrade } from "../entities/OrderbookTrade.js";
 
 const migrationsPath = path.join(__dirname, "..", "migrations", "*.{ts,js}");
 
@@ -17,7 +20,7 @@ export const AppDataSource = new DataSource({
   database: env.DB_NAME,
   synchronize: false,
   logging: env.DB_LOGGING,
-  entities: [Offer],
+  entities: [Offer, MemberLock, OrderbookOrder, OrderbookTrade],
   migrations: [migrationsPath],
 });
 

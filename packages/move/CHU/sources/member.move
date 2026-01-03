@@ -1,6 +1,7 @@
 module chu::member {
     use chu::offer;
     use chu::seat_nft;
+    use chu::vault;
     use sui::clock;
     use sui::coin;
     use sui::event;
@@ -25,6 +26,20 @@ module chu::member {
         assert!(!offer::is_member(offer, member), EAlreadyMember);
 
         let seat = offer::join_offer(offer, payment, clock, ctx);
+        emit_member_joined(offer, member, true);
+        seat
+    }
+
+    public fun join_offer_with_lock(
+        offer: &mut offer::Offer,
+        lock: &mut vault::MemberLock,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): seat_nft::SeatNFT {
+        let member = tx_context::sender(ctx);
+        assert!(!offer::is_member(offer, member), EAlreadyMember);
+
+        let seat = offer::join_offer_with_lock(offer, lock, clock, ctx);
         emit_member_joined(offer, member, true);
         seat
     }
@@ -67,6 +82,15 @@ module chu::member {
         ctx: &mut tx_context::TxContext,
     ): seat_nft::SeatNFT {
         join_offer(offer, payment, clock, ctx)
+    }
+
+    public fun join_offer_with_lock_entry(
+        offer: &mut offer::Offer,
+        lock: &mut vault::MemberLock,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): seat_nft::SeatNFT {
+        join_offer_with_lock(offer, lock, clock, ctx)
     }
 
     #[test_only]

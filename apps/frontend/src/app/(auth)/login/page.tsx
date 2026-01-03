@@ -11,7 +11,7 @@ import { ServiceAccessCard } from "@/features/auth/components/service-access-car
 export default function LoginPage() {
     const router = useRouter()
     const { walletConnected } = useAuth()
-    const { subscriptions } = useMember()
+    const { subscriptions, isLoadingSubscriptions, isErrorSubscriptions, subscriptionsError } = useMember()
 
     const offers = subscriptions
     // Filter to only show offers with credentials
@@ -63,6 +63,14 @@ export default function LoginPage() {
                             Connect your wallet to see your available services.
                         </p>
                         <WalletButton variant="primary" size="lg" />
+                    </div>
+                ) : isLoadingSubscriptions ? (
+                    <div className="bg-white rounded-3xl p-8 shadow-xl shadow-orange-100/50 text-center text-gray-600">
+                        Loading your services...
+                    </div>
+                ) : isErrorSubscriptions ? (
+                    <div className="bg-red-50 rounded-3xl p-8 shadow-xl shadow-red-100/50 text-center text-red-700">
+                        {subscriptionsError instanceof Error ? subscriptionsError.message : "Failed to load subscriptions."}
                     </div>
                 ) : accessibleOffers.length === 0 ? (
                     <div className="bg-white rounded-3xl p-12 shadow-xl shadow-orange-100/50 text-center">

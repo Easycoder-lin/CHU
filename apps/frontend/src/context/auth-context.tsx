@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react"
 import { User, UserMode } from "@/types"
-import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
+import { useCurrentAccount, useDisconnectWallet, useSignAndExecuteTransaction } from "@mysten/dapp-kit"
+import { getSponsorService } from "@/lib/services/factory"
 
 interface AuthContextType {
     walletConnected: boolean
@@ -20,21 +21,40 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
     const currentAccount = useCurrentAccount();
     const { mutate: disconnect } = useDisconnectWallet();
+    const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
     const [user, setUser] = useState<User | null>(null);
     const [currentMode, setCurrentMode] = useState<UserMode>(null);
 
     // Sync wallet state with user state
     React.useEffect(() => {
+        let active = true;
         if (currentAccount) {
-            setUser(prev => prev?.walletAddress === currentAccount.address ? prev : {
-                walletAddress: currentAccount.address,
-                isSponsor: true, // Default to true for testing // Default to false, checkSponsorStatus() in a real app
+            const address = currentAccount.address;
+            setUser(prev => prev?.walletAddress === address ? prev : {
+                walletAddress: address,
+                isSponsor: false,
                 stakedAmount: 0,
                 stakedAt: undefined
             });
+
+            const sponsorService = getSponsorService();
+            sponsorService.checkIsSponsor(address)
+                .then((isSponsor) => {
+                    if (!active) return;
+                    setUser(prev => {
+                        if (!prev || prev.walletAddress !== address) return prev;
+                        return { ...prev, isSponsor };
+                    });
+                })
+                .catch(() => {
+                    // Already handled in service; keep default false.
+                });
         } else {
             setUser(null);
         }
+        return () => {
+            active = false;
+        };
     }, [currentAccount]);
 
     const connectWallet = useCallback(async () => {
@@ -50,20 +70,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [disconnect]);
 
     const stakeToBecomeSponsors = useCallback(async () => {
-        console.log("Staking tokens to become sponsor...");
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (!currentAccount?.address) {
+            throw new Error("Wallet address required to stake");
+        }
+        const sponsorService = getSponsorService();
+        const signer = {
+            signAndExecuteTransaction: (input: { transaction: any }) => signAndExecuteTransaction(input),
+        };
+        const stakeAmount = 1;
+        await sponsorService.stake(stakeAmount, signer, currentAccount.address);
+        const isSponsor = await sponsorService.checkIsSponsor(currentAccount.address);
         setUser((prev) =>
             prev
                 ? {
                     ...prev,
-                    isSponsor: true,
-                    stakedAmount: 100,
+                    isSponsor,
+                    stakedAmount: stakeAmount,
                     stakedAt: new Date(),
                 }
                 : null
         );
-        console.log("Successfully staked! You are now a sponsor.");
-    }, []);
+    }, [currentAccount?.address, signAndExecuteTransaction]);
 
     const setMode = useCallback((mode: UserMode) => {
         setCurrentMode(mode);

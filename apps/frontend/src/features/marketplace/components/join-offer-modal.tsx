@@ -112,17 +112,17 @@ export function JoinOfferModal({
                     </>
                 )}
 
-                {/* Step 2: Process Payment */}
+                {/* Step 2: Lock Funds */}
                 {paymentStep === "payment" && (
                     <>
                         <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
                             <CreditCard className="w-8 h-8 text-blue-600" />
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
-                            Confirm Payment
+                            Lock Funds
                         </h3>
                         <p className="text-gray-600 mb-6 text-center">
-                            Review and confirm your subscription payment
+                            Review and lock your escrow for this subscription
                         </p>
                         <div className="bg-gray-50 rounded-xl p-4 mb-4">
                             <div className="flex justify-between mb-3 pb-3 border-b border-gray-200">
@@ -145,7 +145,7 @@ export function JoinOfferModal({
                             </div>
                         </div>
                         <div className="bg-blue-50 rounded-xl p-3 mb-6 text-sm text-blue-700">
-                            💡 Payment will be held in escrow until credentials are verified
+                            💡 Funds lock immediately in escrow until credentials are verified
                         </div>
                         <div className="flex gap-3">
                             <Button
@@ -168,7 +168,7 @@ export function JoinOfferModal({
                                 ) : (
                                     <>
                                         <CreditCard className="w-4 h-4 mr-2" />
-                                        Pay ${offer.price}
+                                        Lock ${offer.price}
                                     </>
                                 )}
                             </Button>
@@ -183,7 +183,7 @@ export function JoinOfferModal({
                             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
                         </div>
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                            Payment Successful!
+                            Escrow Locked!
                         </h3>
                         <p className="text-gray-600 mb-4">
                             You now have a seat in this subscription

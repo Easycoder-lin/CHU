@@ -80,10 +80,10 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
         }
     }
 
-    const canSubmitCredentials = offer.status === "FULL_PENDING_CREDENTIAL"
+    const canSubmitCredentials = offer.status === "WAITING_FOR_CREDENTIAL"
     const canWithdraw = offer.status === "RELEASABLE"
     const canSlashOffer =
-        offer.status === "FULL_PENDING_CREDENTIAL" &&
+        offer.status === "WAITING_FOR_CREDENTIAL" &&
         !!offer.credentialDeadline &&
         new Date() > new Date(offer.credentialDeadline)
     const showCredentials =

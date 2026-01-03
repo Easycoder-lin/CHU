@@ -12,7 +12,7 @@ import { Navbar } from "@/components/shared/navbar"
 export default function SponsorManagePage() {
     const router = useRouter()
     const { walletConnected } = useAuth()
-    const { myOffers: offers } = useSponsor()
+    const { myOffers: offers, isLoadingMyOffers, isErrorMyOffers, myOffersError } = useSponsor()
 
     if (!walletConnected) {
         return null // Return null while redirecting or waiting for auth
@@ -43,7 +43,15 @@ export default function SponsorManagePage() {
                     </Button>
                 </div>
 
-                {offers.length === 0 ? (
+                {isLoadingMyOffers ? (
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center shadow-sm border border-slate-200/70 dark:border-slate-700">
+                        Loading your offers...
+                    </div>
+                ) : isErrorMyOffers ? (
+                    <div className="bg-red-50 dark:bg-red-950/40 rounded-3xl p-12 text-center shadow-sm border border-red-200/70 dark:border-red-800 text-red-700 dark:text-red-300">
+                        {myOffersError instanceof Error ? myOffersError.message : "Failed to load offers."}
+                    </div>
+                ) : offers.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 rounded-3xl p-16 text-center shadow-sm border border-dashed border-slate-300 dark:border-slate-700">
                         <div className="w-20 h-20 rounded-full bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center mx-auto mb-6">
                             <Plus className="w-10 h-10 text-[#FF6B6B]" />

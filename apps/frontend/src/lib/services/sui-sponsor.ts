@@ -22,10 +22,19 @@ export class SuiSponsorService implements ISponsorService {
     constructor(private client: SuiClient) { }
 
     async checkIsSponsor(address: string): Promise<boolean> {
-        // 真實邏輯：查詢該 Address 是否擁有 Sponsor Object 或在 Sponsor Resource List 中
-        // 暫時回傳 false，等合約定義好查詢方式
-        // 範例: this.client.getObject(...)
-        return false;
+        if (!address) return false;
+        const sponsorType = `${CONTRACT_CONFIG.PACKAGE_ID}::${CONTRACT_CONFIG.MODULES.SPONSOR}::SponsorBadge`;
+        try {
+            const owned = await this.client.getOwnedObjects({
+                owner: address,
+                filter: { StructType: sponsorType },
+                options: { showType: true },
+            });
+            return owned.data.length > 0;
+        } catch (error) {
+            console.warn("Failed to check sponsor status", error);
+            return false;
+        }
     }
 
     async stake(amount: number, signer?: TransactionSigner, ownerAddress?: string): Promise<string> {
@@ -42,6 +51,8 @@ export class SuiSponsorService implements ISponsorService {
     async publishOffer(params: CreateOfferParams, signer?: TransactionSigner): Promise<string> {
         if (!signer) throw new Error("Signer required for real transaction");
         if (!params.sponsorAddress) throw new Error("Sponsor address required to publish offer");
+        const pricePerSeat = Math.max(1, Math.round(params.pricePerSeat));
+        const stakeToLock = Math.max(0, Math.round(params.stakeToLock ?? pricePerSeat));
 
         const backendOffer = await apiRequest<CreateOfferResponse>("/offers", {
             method: "POST",
@@ -51,7 +62,7 @@ export class SuiSponsorService implements ISponsorService {
                 title: params.title || `${params.service} Subscription`,
                 description: params.description || "",
                 seatCap: params.totalSeats,
-                pricePerSeat: params.pricePerSeat,
+                pricePerSeat,
                 period: params.period,
                 currency: params.currency || "USD",
                 tags: params.tags || [],
@@ -59,7 +70,7 @@ export class SuiSponsorService implements ISponsorService {
                 sponsorAvatar: params.sponsorAvatar || null,
                 orderHash: params.orderHash || null,
                 platformFeeBps: params.platformFeeBps ?? 0,
-                stakeLocked: params.stakeToLock ?? params.pricePerSeat,
+                stakeLocked: stakeToLock,
             }),
         });
 
@@ -73,11 +84,12 @@ export class SuiSponsorService implements ISponsorService {
                 sponsorBadgeId,
                 orderHash: orderHashBytes,
                 seatCap: params.totalSeats,
-                pricePerSeat: params.pricePerSeat,
+                pricePerSeat,
                 platformFeeBps: params.platformFeeBps ?? 0,
-                stakeToLock: params.stakeToLock ?? params.pricePerSeat,
+                stakeToLock,
                 ownerAddress: params.sponsorAddress,
             });
+            tx.setGasBudget(100_000_000);
 
             const result = await signer.signAndExecuteTransaction({
                 transaction: tx,
@@ -101,13 +113,16 @@ export class SuiSponsorService implements ISponsorService {
 
             return result.digest;
         } catch (error) {
-            await apiRequest(`/offers/${backendOffer.offerId}/tx`, {
-                method: "PATCH",
-                body: JSON.stringify({
-                    status: "FAILED",
-                    errorReason: error instanceof Error ? error.message : String(error),
-                }),
-            });
+            try {
+                await apiRequest(`/offers/${backendOffer.offerId}/tx`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        status: "FAILED",
+                    }),
+                });
+            } catch {
+                // Offer might already be deleted on failure; ignore cleanup errors.
+            }
             throw error;
         }
     }
@@ -134,6 +149,7 @@ export class SuiSponsorService implements ISponsorService {
                 method: "PATCH",
                 body: JSON.stringify({
                     status: "CREDENTIALS_SUBMITTED",
+                    credentials,
                     txDigest: result.digest,
                 }),
             });
@@ -173,7 +189,7 @@ export class SuiSponsorService implements ISponsorService {
     }
 
     async getMyOffers(address: string): Promise<Offer[]> {
-        const response = await apiRequest<{ data: BackendOffer[] }>("/offers?sponsorAddress=" + address);
+        const response = await apiRequest<{ data: BackendOffer[] }>(`/offers?sponsorAddress=${encodeURIComponent(address)}`);
         return response.data.map(mapBackendOffer);
     }
 

@@ -12,7 +12,16 @@ import { Navbar } from "@/components/shared/navbar"
 export default function MemberOrdersPage() {
   const router = useRouter()
   const { walletConnected } = useAuth()
-  const { subscriptions: offers } = useMember()
+  const {
+    subscriptions: offers,
+    isLoadingSubscriptions,
+    isErrorSubscriptions,
+    subscriptionsError,
+    pendingSettlements,
+    isLoadingPendingSettlements,
+    settleMatchedTrade,
+    isSettlingMatchedTrade,
+  } = useMember()
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -54,35 +63,87 @@ export default function MemberOrdersPage() {
               Go to Marketplace
             </Button>
           </div>
-        ) : offers.length === 0 ? (
-          <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-dashed border-gray-300 max-w-2xl mx-auto mt-8">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl opacity-50">📭</span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Your Wallet is Empty
-            </h3>
-            <p className="text-gray-500 mb-8">
-              You haven't joined any shared plans yet.
-            </p>
-            <Button
-              onClick={() => router.push("/orderbook")}
-              className="px-6 py-3 h-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold"
-            >
-              Browse Subscriptions
-            </Button>
+        ) : isLoadingSubscriptions ? (
+          <div className="bg-white rounded-3xl p-12 text-center shadow-lg border border-gray-100 max-w-2xl mx-auto mt-12">
+            Loading your subscriptions...
+          </div>
+        ) : isErrorSubscriptions ? (
+          <div className="bg-red-50 rounded-3xl p-12 text-center shadow-lg border border-red-100 max-w-2xl mx-auto mt-12 text-red-700">
+            {subscriptionsError instanceof Error ? subscriptionsError.message : "Failed to load subscriptions."}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {offers.map((offer) => {
-              return (
-                <SubscriptionCard
-                  key={offer.id}
-                  offer={offer}
-                />
-              )
-            })}
-          </div>
+          <>
+            {walletConnected && pendingSettlements.length > 0 && (
+              <div className="mb-10 bg-amber-50 border border-amber-200 rounded-3xl p-6">
+                <h2 className="text-xl font-bold text-amber-900 mb-2">Pending Settlements</h2>
+                <p className="text-sm text-amber-800 mb-4">
+                  Your bids matched successfully. Release your escrowed funds to finalize the subscription.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingSettlements.map((settlement) => (
+                    <div
+                      key={settlement.tradeId}
+                      className="rounded-2xl bg-white border border-amber-100 p-4 shadow-sm flex flex-col gap-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-900">{settlement.product}</span>
+                        <span className="text-xs text-amber-700">Matched</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {settlement.quantity} seat(s) @ ${settlement.price} = ${settlement.baseAmount}
+                      </div>
+                      {settlement.feeAmount > 0 && (
+                        <div className="text-xs text-gray-500">
+                          Fee: ${settlement.feeAmount} (included at settlement)
+                        </div>
+                      )}
+                      <Button
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        disabled={isSettlingMatchedTrade || !settlement.offerObjectId || !settlement.lockObjectId}
+                        onClick={() => settleMatchedTrade({ settlement })}
+                      >
+                        {settlement.offerObjectId && settlement.lockObjectId ? `Settle $${settlement.baseAmount}` : "Missing escrow info"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {isLoadingPendingSettlements && (
+                  <p className="text-sm text-amber-700 mt-3">Loading pending settlements...</p>
+                )}
+              </div>
+            )}
+
+            {offers.length === 0 ? (
+              <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-dashed border-gray-300 max-w-2xl mx-auto mt-8">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl opacity-50">📭</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Your Wallet is Empty
+                </h3>
+                <p className="text-gray-500 mb-8">
+                  You haven't joined any shared plans yet.
+                </p>
+                <Button
+                  onClick={() => router.push("/orderbook")}
+                  className="px-6 py-3 h-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold"
+                >
+                  Browse Subscriptions
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                {offers.map((offer) => {
+                  return (
+                    <SubscriptionCard
+                      key={offer.id}
+                      offer={offer}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

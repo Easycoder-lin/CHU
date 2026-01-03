@@ -105,7 +105,7 @@ export function OrderCard({
       <div className="p-6 bg-gray-50">
         {/* Waiting statuses */}
         {(offer.status === "LISTED" ||
-          offer.status === "FULL_PENDING_CREDENTIAL") && (
+          offer.status === "WAITING_FOR_CREDENTIAL") && (
             <div className="flex items-center gap-3 text-amber-600">
               <Clock className="w-5 h-5" />
               <div>

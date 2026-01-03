@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api"
-import { Order, OrderBookSnapshot, OrderSide, OrderStatus, ProductId, Trade } from "@/types"
+import { Order, OrderBookSnapshot, OrderSide, OrderStatus, PendingSettlement, ProductId, Trade } from "@/types"
 
 export interface PlaceOrderPayload {
     side: OrderSide
@@ -8,6 +8,10 @@ export interface PlaceOrderPayload {
     actor: "SPONSOR" | "MEMBER"
     walletAddress?: string | null
     product: ProductId
+    lockAmount?: number
+    lockAsset?: string
+    lockTxDigest?: string
+    lockObjectId?: string
 }
 
 export function fetchOrderBook(product: ProductId) {
@@ -27,6 +31,12 @@ export function fetchTrades(product: ProductId) {
     return apiRequest<{ trades: Trade[] }>(`/orderbook/trades?product=${product}`)
 }
 
+export function fetchPendingSettlements(walletAddress: string) {
+    const query = new URLSearchParams()
+    query.set("wallet", walletAddress)
+    return apiRequest<{ settlements: PendingSettlement[] }>(`/orderbook/pending-settlements?${query.toString()}`)
+}
+
 export function placeOrder(payload: PlaceOrderPayload) {
     return apiRequest<{ order: Order; trades: Trade[] }>("/orderbook/orders", {
         method: "POST",
@@ -40,5 +50,12 @@ export function placeOrder(payload: PlaceOrderPayload) {
 export function cancelOrder(product: ProductId, orderId: string) {
     return apiRequest<{ order: Order }>(`/orderbook/orders/${orderId}/cancel?product=${product}`, {
         method: "POST",
+    })
+}
+
+export function confirmTradeSettled(tradeId: string, walletAddress: string, txDigest?: string) {
+    return apiRequest<{ tradeId: string; status: string; txDigest?: string }>(`/orderbook/trades/${tradeId}/settle`, {
+        method: "POST",
+        body: JSON.stringify({ walletAddress, txDigest }),
     })
 }

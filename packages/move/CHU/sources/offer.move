@@ -20,8 +20,6 @@ module chu::offer {
     const EInvalidSeatCap: u64 = 0;
     const EInvalidPrice: u64 = 1;
     const EInvalidFeeBps: u64 = 2;
-    const EInvalidStake: u64 = 3;
-    const EInsufficientStake: u64 = 4;
     const ENotSponsor: u64 = 5;
     const EOfferNotOpen: u64 = 6;
     const ESeatCapReached: u64 = 7;
@@ -55,7 +53,7 @@ module chu::offer {
         platform_fee_bps: u64,
         seats_sold: u64,
         status: u8,
-        escrow_payments: balance::Balance<SUI>,
+        escrow: vault::Escrow,
         stake_locked: balance::Balance<SUI>,
         created_at_ms: u64,
         full_at_ms: option::Option<u64>,
@@ -148,7 +146,7 @@ module chu::offer {
 
     // Create a new offer.
     public fun create_offer(
-        badge: &mut sponsor::SponsorBadge,
+        badge: &sponsor::SponsorBadge,
         order_hash: vector<u8>,
         seat_cap: u64,
         price_per_seat: u64,
@@ -172,7 +170,7 @@ module chu::offer {
 
     // Entry wrapper to create an offer on-chain.
     public fun create_offer_entry(
-        badge: &mut sponsor::SponsorBadge,
+        badge: &sponsor::SponsorBadge,
         order_hash: vector<u8>,
         seat_cap: u64,
         price_per_seat: u64,
@@ -196,7 +194,7 @@ module chu::offer {
     // Test helper to create an offer at a given timestamp.
     #[test_only]
     public fun create_offer_for_testing(
-        badge: &mut sponsor::SponsorBadge,
+        badge: &sponsor::SponsorBadge,
         order_hash: vector<u8>,
         seat_cap: u64,
         price_per_seat: u64,
@@ -220,7 +218,7 @@ module chu::offer {
 
     // Internal helper to create an offer with explicit time.
     fun create_offer_with_time(
-        badge: &mut sponsor::SponsorBadge,
+        badge: &sponsor::SponsorBadge,
         order_hash: vector<u8>,
         seat_cap: u64,
         price_per_seat: u64,
@@ -246,7 +244,7 @@ module chu::offer {
             platform_fee_bps,
             seats_sold: 0,
             status: STATUS_OPEN,
-            escrow_payments: balance::zero<SUI>(),
+            escrow: vault::init_escrow(),
             stake_locked,
             created_at_ms: now_ms,
             full_at_ms: option::none<u64>(),
@@ -280,6 +278,15 @@ module chu::offer {
         join_offer_with_time(offer, payment, clock::timestamp_ms(clock), ctx)
     }
 
+    public(package) fun join_offer_with_lock(
+        offer: &mut Offer,
+        lock: &mut vault::MemberLock,
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext,
+    ): seat_nft::SeatNFT {
+        join_offer_with_lock_time(offer, lock, clock::timestamp_ms(clock), ctx, true)
+    }
+
     // Test helper to join an offer at a given timestamp.
     #[test_only]
     public(package) fun join_offer_for_testing(
@@ -289,6 +296,16 @@ module chu::offer {
         ctx: &mut tx_context::TxContext,
     ): seat_nft::SeatNFT {
         join_offer_with_time_for_testing(offer, payment, now_ms, ctx)
+    }
+
+    #[test_only]
+    public(package) fun join_offer_with_lock_for_testing(
+        offer: &mut Offer,
+        lock: &mut vault::MemberLock,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+    ): seat_nft::SeatNFT {
+        join_offer_with_lock_time(offer, lock, now_ms, ctx, false)
     }
 
     // Internal helper to join an offer with explicit time.
@@ -304,32 +321,11 @@ module chu::offer {
         let member = tx_context::sender(ctx);
         let amount = coin::value(&payment);
         assert!(amount == offer.price_per_seat, EInvalidPayment);
-        let payment_balance = coin::into_balance(payment);
-        balance::join(&mut offer.escrow_payments, payment_balance);
-
-        offer.seats_sold = offer.seats_sold + 1;
-        vector::push_back(&mut offer.members, member);
-
-        event::emit(MemberJoined {
-            offer_id: object::id(offer),
-            member,
-            seats_sold: offer.seats_sold,
-        });
-
-        if (offer.seats_sold == offer.seat_cap) {
-            offer.status = STATUS_FULL;
-            offer.full_at_ms = option::some(now_ms);
-            offer.cred_deadline_ms = option::some(now_ms + DAY_MS);
-            offer.settle_after_ms = option::some(now_ms + THREE_DAYS_MS);
-            event::emit(OfferFilled {
-                offer_id: object::id(offer),
-                full_at_ms: now_ms,
-                order_hash_len: vector::length(&offer.order_hash),
-            });
-        };
-
-        let order_hash = copy_u8_vector(&offer.order_hash);
-        seat_nft::mint(object::id(offer), order_hash, ctx)
+        let mut lock = vault::lock_funds(payment, ctx);
+        let payment_coin = vault::settle_from_lock(&mut lock, offer.price_per_seat, ctx);
+        vault::close_empty_lock(lock);
+        let payment_balance = coin::into_balance(payment_coin);
+        join_offer_with_payment_balance(offer, member, payment_balance, now_ms, ctx, true)
     }
 
     #[test_only]
@@ -345,21 +341,66 @@ module chu::offer {
         let member = tx_context::sender(ctx);
         let amount = coin::value(&payment);
         assert!(amount == offer.price_per_seat, EInvalidPayment);
-        let payment_balance = coin::into_balance(payment);
-        balance::join(&mut offer.escrow_payments, payment_balance);
+        let mut lock = vault::lock_funds(payment, ctx);
+        let payment_coin = vault::settle_from_lock(&mut lock, offer.price_per_seat, ctx);
+        vault::close_empty_lock(lock);
+        let payment_balance = coin::into_balance(payment_coin);
+        join_offer_with_payment_balance(offer, member, payment_balance, now_ms, ctx, false)
+    }
+
+    fun join_offer_with_lock_time(
+        offer: &mut Offer,
+        lock: &mut vault::MemberLock,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+        emit_events: bool,
+    ): seat_nft::SeatNFT {
+        assert!(offer.status == STATUS_OPEN, EOfferNotOpen);
+        assert!(offer.seats_sold < offer.seat_cap, ESeatCapReached);
+
+        let member = tx_context::sender(ctx);
+        let payment_coin = vault::settle_from_lock(lock, offer.price_per_seat, ctx);
+        let payment_balance = coin::into_balance(payment_coin);
+        join_offer_with_payment_balance(offer, member, payment_balance, now_ms, ctx, emit_events)
+    }
+
+    fun join_offer_with_payment_balance(
+        offer: &mut Offer,
+        member: address,
+        payment_balance: balance::Balance<SUI>,
+        now_ms: u64,
+        ctx: &mut tx_context::TxContext,
+        emit_events: bool,
+    ): seat_nft::SeatNFT {
+        vault::escrow_deposit(&mut offer.escrow, payment_balance);
 
         offer.seats_sold = offer.seats_sold + 1;
         vector::push_back(&mut offer.members, member);
+
+        if (emit_events) {
+            event::emit(MemberJoined {
+                offer_id: object::id(offer),
+                member,
+                seats_sold: offer.seats_sold,
+            });
+        };
 
         if (offer.seats_sold == offer.seat_cap) {
             offer.status = STATUS_FULL;
             offer.full_at_ms = option::some(now_ms);
             offer.cred_deadline_ms = option::some(now_ms + DAY_MS);
             offer.settle_after_ms = option::some(now_ms + THREE_DAYS_MS);
+            if (emit_events) {
+                event::emit(OfferFilled {
+                    offer_id: object::id(offer),
+                    full_at_ms: now_ms,
+                    order_hash_len: vector::length(&offer.order_hash),
+                });
+            };
         };
 
         let order_hash = copy_u8_vector(&offer.order_hash);
-        seat_nft::mint_for_testing(object::id(offer), order_hash, ctx)
+        seat_nft::mint(object::id(offer), order_hash, ctx)
     }
 
     public(package) fun is_member(offer: &Offer, member: address): bool {
@@ -391,6 +432,10 @@ module chu::offer {
 
     public fun is_settled(offer: &Offer): bool {
         offer.status == STATUS_SETTLED
+    }
+
+    public fun escrow_value(offer: &Offer): u64 {
+        vault::escrow_value(&offer.escrow)
     }
 
     // Clone a vector<u8> without relying on std::vector copy APIs.
@@ -512,9 +557,9 @@ module chu::offer {
         assert!(offer.seats_sold > 0, ESeatUnderflow);
         offer.seats_sold = offer.seats_sold - 1;
 
-        let available = balance::value(&offer.escrow_payments);
+        let available = vault::escrow_value(&offer.escrow);
         assert!(available >= offer.price_per_seat, EInsufficientEscrow);
-        let refund_balance = balance::split(&mut offer.escrow_payments, offer.price_per_seat);
+        let refund_balance = vault::escrow_withdraw(&mut offer.escrow, offer.price_per_seat);
         let refund_coin = coin::from_balance(refund_balance, ctx);
 
         let seat_id = object::id(&seat);
@@ -846,12 +891,12 @@ module chu::offer {
         let settle_after = *option::borrow(&offer.settle_after_ms);
         assert!(now_ms >= settle_after, EOfferNotReadyToSettle);
 
-        let total = balance::value(&offer.escrow_payments);
+        let total = vault::escrow_value(&offer.escrow);
         let fee = total * offer.platform_fee_bps / 10_000;
-        let fee_balance = balance::split(&mut offer.escrow_payments, fee);
+        let fee_balance = vault::escrow_withdraw(&mut offer.escrow, fee);
         vault::deposit_fees(vault_obj, fee_balance);
 
-        let payout_balance = balance::withdraw_all(&mut offer.escrow_payments);
+        let payout_balance = vault::escrow_withdraw(&mut offer.escrow, total - fee);
         let payout_coin = coin::from_balance(payout_balance, ctx);
 
         let stake_balance = balance::withdraw_all(&mut offer.stake_locked);

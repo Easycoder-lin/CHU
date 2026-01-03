@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMemberService } from "@/lib/services/factory";
 import { useSignAndExecuteTransaction, useCurrentAccount } from "@mysten/dapp-kit";
 import { useToast } from "@/hooks/use-toast";
+import type { PendingSettlement } from "@/types";
 
 export const useMember = () => {
     const account = useCurrentAccount();
@@ -17,7 +18,7 @@ export const useMember = () => {
 
     const joinOfferMutation = useMutation({
         mutationFn: async ({ offerId, backendOfferId, amount }: { offerId: string, backendOfferId?: string, amount: number }) => {
-            return await service.joinOffer(offerId, amount, signer, backendOfferId);
+            return await service.joinOffer(offerId, amount, signer, account?.address, backendOfferId);
         },
         onSuccess: () => {
             toast({ title: "Joined Offer!", description: "You have successfully subscribed." });
@@ -33,6 +34,32 @@ export const useMember = () => {
         queryKey: ["my-subscriptions", account?.address],
         queryFn: () => service.getMySubscriptions(account?.address || ""),
         enabled: !!account?.address,
+        refetchInterval: (data) =>
+            Array.isArray(data) && data.some((offer) => offer.status === "WAITING_FOR_CREDENTIAL")
+                ? 3000
+                : 10000,
+    });
+
+    const pendingSettlementsQuery = useQuery({
+        queryKey: ["pending-settlements", account?.address],
+        queryFn: () => service.getPendingSettlements(account?.address || ""),
+        enabled: !!account?.address,
+        refetchInterval: 10000,
+    });
+
+    const settleMatchedTradeMutation = useMutation({
+        mutationFn: async ({ settlement }: { settlement: PendingSettlement }) => {
+            return await service.settleMatchedTrade(settlement, signer, account?.address);
+        },
+        onSuccess: () => {
+            toast({ title: "Settlement Submitted", description: "Your escrow release has been confirmed." });
+            queryClient.invalidateQueries({ queryKey: ["pending-settlements"] });
+            queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
+            queryClient.invalidateQueries({ queryKey: ["market-offers"] });
+        },
+        onError: (err) => {
+            toast({ title: "Settlement Failed", description: err.message, variant: "destructive" });
+        }
     });
 
     const raiseDisputeMutation = useMutation({
@@ -94,6 +121,12 @@ export const useMember = () => {
         isJoining: joinOfferMutation.isPending,
         subscriptions: mySubscriptionsQuery.data || [],
         isLoadingSubscriptions: mySubscriptionsQuery.isLoading,
+        isErrorSubscriptions: mySubscriptionsQuery.isError,
+        subscriptionsError: mySubscriptionsQuery.error,
+        pendingSettlements: pendingSettlementsQuery.data || [],
+        isLoadingPendingSettlements: pendingSettlementsQuery.isLoading,
+        settleMatchedTrade: settleMatchedTradeMutation.mutateAsync,
+        isSettlingMatchedTrade: settleMatchedTradeMutation.isPending,
         raiseDispute: raiseDisputeMutation.mutateAsync,
         isRaisingDispute: raiseDisputeMutation.isPending,
         slashOffer: slashOfferMutation.mutateAsync,

@@ -35,7 +35,7 @@ export default function SponsorCreateOfferPage() {
         title: PRODUCT_OPTIONS[0].name,
         description: PRODUCT_OPTIONS[0].desc,
         totalSeats: PRODUCT_OPTIONS[0].seats,
-        price: PRODUCT_OPTIONS[0].defaultPrice,
+        price: String(PRODUCT_OPTIONS[0].defaultPrice),
     })
 
     const selectedProduct = PRODUCT_OPTIONS.find(p => p.id === selectedProductId) || PRODUCT_OPTIONS[0]
@@ -63,7 +63,7 @@ export default function SponsorCreateOfferPage() {
             title: product.name,
             description: product.desc,
             totalSeats: product.seats,
-            price: product.defaultPrice,
+            price: String(product.defaultPrice),
         })
     }
 
@@ -72,11 +72,12 @@ export default function SponsorCreateOfferPage() {
         if (!walletConnected) return
 
         try {
+            const priceValue = Number(formData.price);
             await publishOffer({
                 // Directly map the selected product's service type
                 service: selectedProduct.service as ServiceType,
                 totalSeats: formData.totalSeats,
-                pricePerSeat: formData.price,
+                pricePerSeat: Number.isFinite(priceValue) ? priceValue : 0,
                 // Period is fixed by the product definition (e.g., NETFLIX_ANNUAL is always 'yr')
                 period: selectedProduct.period,
                 title: formData.title,
@@ -272,7 +273,7 @@ export default function SponsorCreateOfferPage() {
                                     onChange={(e) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            price: parseFloat(e.target.value) || 0,
+                                            price: e.target.value.replace(/^0+(?=\d)/, ""),
                                         }))
                                     }
                                     className="w-full px-4 py-3 h-auto rounded-xl border border-gray-200 focus:border-[#FF6B6B] focus:ring-2 focus:ring-orange-100 outline-none transition-all"

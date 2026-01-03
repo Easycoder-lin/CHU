@@ -54,7 +54,12 @@ export const buildPublishOfferPTB = (tx: Transaction, params: PublishOfferOnChai
         ],
     });
 
-    tx.transferObjects([offer], tx.pure.address(params.ownerAddress));
+    // Share the offer so members can call join_offer_entry.
+    tx.moveCall({
+        target: "0x2::transfer::public_share_object",
+        typeArguments: [`${PACKAGE_ID}::${MODULE_OFFER}::Offer`],
+        arguments: [offer],
+    });
 
     return tx;
 };

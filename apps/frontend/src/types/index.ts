@@ -1,7 +1,7 @@
 export type ServiceType = 'Netflix' | 'YouTube' | 'Spotify' | 'Disney+' | 'HBO Max' | 'Apple One' | 'Amazon Prime' | 'ChatGPT' | 'Gemini';
 export type OfferStatus =
     | 'LISTED'
-    | 'FULL_PENDING_CREDENTIAL'
+    | 'WAITING_FOR_CREDENTIAL'
     | 'CREDENTIAL_SUBMITTED'
     | 'DISPUTE_OPEN'
     | 'RELEASABLE'
@@ -42,7 +42,7 @@ export interface Offer {
     sponsorAvatar: string;
     status: OfferStatus;
     createdAt: Date;
-    credentialDeadline: Date;
+    credentialDeadline?: Date | null;
     credentials?: {
         username: string;
         password: string;
@@ -102,6 +102,12 @@ export interface Order {
     status: OrderStatus;
     actor: OrderActor;
     walletAddress?: string;
+    lockAmount?: number;
+    lockUsedAmount?: number;
+    lockAsset?: string;
+    lockTxDigest?: string;
+    lockObjectId?: string;
+    lockStatus?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -127,6 +133,22 @@ export interface Allocation {
     price: number;
     qty: number;
     state: AllocationState;
+    createdAt: string;
+}
+
+export interface PendingSettlement {
+    tradeId: string;
+    product: ProductId;
+    price: number;
+    quantity: number;
+    baseAmount: number;
+    feeBps: number;
+    feeAmount: number;
+    totalAmount: number;
+    offerId?: string;
+    offerObjectId?: string;
+    lockObjectId?: string;
+    lockTxDigest?: string;
     createdAt: string;
 }
 

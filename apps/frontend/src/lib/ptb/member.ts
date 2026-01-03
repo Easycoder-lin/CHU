@@ -10,11 +10,16 @@ const MODULE_OFFER = MODULES.OFFER;
 /**
  * 建構 "加入方案 (付費)" 的交易
  */
-export const buildJoinOfferPTB = (tx: Transaction, offerId: string, paymentAmount: bigint) => {
+export const buildJoinOfferPTB = (
+    tx: Transaction,
+    offerId: string,
+    paymentAmount: bigint,
+    recipientAddress: string
+) => {
     // 支付 Seat 費用
     const [coin] = tx.splitCoins(tx.gas, [paymentAmount]);
 
-    tx.moveCall({
+    const seat = tx.moveCall({
         target: `${PACKAGE_ID}::${MODULE_MEMBER}::join_offer_entry`,
         arguments: [
             tx.object(offerId),
@@ -22,6 +27,28 @@ export const buildJoinOfferPTB = (tx: Transaction, offerId: string, paymentAmoun
             tx.object('0x6') // Clock
         ],
     });
+
+    tx.transferObjects([seat], tx.pure.address(recipientAddress));
+
+    return tx;
+};
+
+export const buildJoinOfferWithLockPTB = (
+    tx: Transaction,
+    offerId: string,
+    lockObjectId: string,
+    recipientAddress: string
+) => {
+    const seat = tx.moveCall({
+        target: `${PACKAGE_ID}::${MODULE_MEMBER}::join_offer_with_lock_entry`,
+        arguments: [
+            tx.object(offerId),
+            tx.object(lockObjectId),
+            tx.object('0x6') // Clock
+        ],
+    });
+
+    tx.transferObjects([seat], tx.pure.address(recipientAddress));
 
     return tx;
 };

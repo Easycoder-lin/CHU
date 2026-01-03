@@ -7,7 +7,7 @@ import { OfferGrid } from "@/features/marketplace/components/offer-grid"
 import { useMarket } from "@/features/marketplace/hooks/use-market"
 
 export default function MarketplacePage() {
-    const { offers } = useMarket()
+    const { offers, isLoading, isError, error } = useMarket()
     const [activeTab, setActiveTab] = useState("Browse")
     const [selectedServices, setSelectedServices] = useState<string[]>([])
     const [selectedStatus, setSelectedStatus] = useState("all")
@@ -87,7 +87,17 @@ export default function MarketplacePage() {
                             </select>
                         </div>
 
-                        <OfferGrid offers={filteredOffers} />
+                        {isLoading ? (
+                            <div className="rounded-2xl border border-orange-100/60 bg-white p-10 text-center text-gray-600">
+                                Loading offers...
+                            </div>
+                        ) : isError ? (
+                            <div className="rounded-2xl border border-red-100 bg-red-50 p-10 text-center text-red-700">
+                                {error instanceof Error ? error.message : "Failed to load offers."}
+                            </div>
+                        ) : (
+                            <OfferGrid offers={filteredOffers} />
+                        )}
                     </div>
                 </div>
             </main>

@@ -1,5 +1,4 @@
 import "dotenv/config";
-
 import { z } from "zod/v4";
 
 const envSchema = z.object({
@@ -15,7 +14,7 @@ const envSchema = z.object({
   SUI_NETWORK: z.string().default("testnet"),
   SUI_PACKAGE_ID: z
     .string()
-    .default("0xedc20852fba479e27d10cb05ca415cbb608dcb4fddc1f0749fbfa3e4c93c71b7"),
+    .default("0x7300a3b8d7e3b285a773fd6f8f4715a811ec02d2dabe31efdc8262a80937d7dc"),
 });
 
 try {
