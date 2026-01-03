@@ -25,7 +25,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
     }, [])
 
     const isSponsor = mounted && user?.isSponsor
-    const tabs = ["Browse", "My Subscriptions", "Sponsor"]
+    const tabs = ["Marketplace", "My Subscriptions", "Sponsor"]
 
     const handleTabClick = (tab: string) => {
         if (onTabChange) {
@@ -35,7 +35,7 @@ export function Navbar({ activeTab, onTabChange }: NavbarProps) {
             // In real app, tabs might route to different pages
             if (tab === 'Sponsor') router.push(isSponsor ? '/sponsor/manage' : '/sponsor/stake')
             if (tab === 'My Subscriptions') router.push('/member/orders')
-            if (tab === 'Browse') router.push('/orderbook')
+            if (tab === 'Marketplace') router.push('/orderbook')
         }
         setIsMobileMenuOpen(false)
     }
