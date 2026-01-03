@@ -14,7 +14,10 @@ export type BackendOffer = {
     sponsorName?: string | null;
     sponsorAvatar?: string | null;
     status: string;
-    chainOfferObjectId?: string | null;
+    offerObjectId?: string | null;
+    poolObjectId?: string | null;
+    txDigest?: string | null;
+    errorReason?: string | null;
     createdAt: string;
     credentialDeadline?: string | null;
     credentials?: {
@@ -31,6 +34,12 @@ const mapStatus = (status: string): OfferStatus => {
     switch (status) {
         case "PENDING":
             return "PENDING";
+        case "DRAFT":
+            return "PENDING";
+        case "SUBMITTED":
+            return "PENDING";
+        case "CONFIRMED":
+            return "LISTED";
         case "DISPUTE_OPEN":
             return "DISPUTE_OPEN";
         case "FAILED":
@@ -55,9 +64,11 @@ export const mapBackendOffer = (offer: BackendOffer): Offer => {
     const credentialDeadline = offer.credentialDeadline ? new Date(offer.credentialDeadline) : createdAt;
 
     return {
-        id: offer.chainOfferObjectId || offer.id,
+        id: offer.offerObjectId || offer.id,
         backendId: offer.id,
-        chainOfferObjectId: offer.chainOfferObjectId || undefined,
+        offerObjectId: offer.offerObjectId || undefined,
+        poolObjectId: offer.poolObjectId || undefined,
+        errorReason: offer.errorReason || undefined,
         service: offer.service as ServiceType,
         title: offer.title,
         description: offer.description || "",

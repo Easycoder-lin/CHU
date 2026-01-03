@@ -27,7 +27,7 @@ export interface ISponsorService {
     checkIsSponsor(address: string): Promise<boolean>;
 
     // signer is optional because Mock service doesn't need it
-    stake(amount: number, signer?: TransactionSigner): Promise<string>;
+    stake(amount: number, signer?: TransactionSigner, ownerAddress?: string): Promise<string>;
 
     publishOffer(params: CreateOfferParams, signer?: TransactionSigner): Promise<string>;
 

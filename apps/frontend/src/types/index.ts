@@ -26,7 +26,9 @@ export type AllocationState = 'ACTIVE' | 'EXITED' | 'TERMINATED';
 export interface Offer {
     id: string;
     backendId?: string;
-    chainOfferObjectId?: string;
+    offerObjectId?: string;
+    poolObjectId?: string;
+    errorReason?: string;
     service: ServiceType;
     title: string;
     description: string;

@@ -100,6 +100,11 @@ export function OfferManageCard({ offer }: { offer: Offer }) {
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">{offer.title}</h3>
                         </div>
                         <OfferStatusBadge status={offer.status} />
+                        {offer.errorReason && offer.status === "FAILED" && (
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                {offer.errorReason}
+                            </p>
+                        )}
                     </div>
                     <div className="text-right">
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">${offer.price}</p>

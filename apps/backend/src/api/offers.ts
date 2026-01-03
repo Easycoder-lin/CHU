@@ -3,6 +3,8 @@ import { z } from "zod/v4";
 
 import { AppDataSource } from "../db/data-source.js";
 import { Offer, OfferStatus } from "../entities/Offer.js";
+import { env } from "../env.js";
+import { getTransactionBlock, verifyOfferCreation } from "../services/sui-rpc.js";
 
 const router = express.Router();
 
@@ -26,9 +28,10 @@ const createOfferSchema = z.object({
 const updateTxSchema = z.object({
   txDigest: z.string().min(1).optional(),
   status: z.nativeEnum(OfferStatus).optional(),
-  chainOfferObjectId: z.string().min(1).optional(),
+  offerObjectId: z.string().min(1).optional(),
+  poolObjectId: z.string().min(1).optional(),
   seatsSold: z.number().int().min(0).optional(),
-  lastError: z.string().optional(),
+  errorReason: z.string().optional(),
 });
 
 const listQuerySchema = z.object({
@@ -58,13 +61,24 @@ router.post("/", async (req, res, next) => {
       orderHash: payload.orderHash ?? null,
       platformFeeBps: payload.platformFeeBps ?? 0,
       stakeLocked: payload.stakeLocked ?? 0,
-      status: OfferStatus.PENDING,
+      status: OfferStatus.DRAFT,
       seatsSold: 0,
       members: [],
+      packageId: env.SUI_PACKAGE_ID,
+      chainNetwork: env.SUI_NETWORK,
+      rpcUrl: env.SUI_RPC_URL,
     });
 
     const created = await repository.save(offer);
-    res.status(201).json(created);
+    res.status(201).json({
+      offerId: created.id,
+      chainConfig: {
+        packageId: created.packageId,
+        rpcUrl: created.rpcUrl,
+        network: created.chainNetwork,
+      },
+      draft: created,
+    });
   }
   catch (error) {
     next(error);
@@ -84,9 +98,80 @@ router.patch("/:id/tx", async (req, res, next) => {
 
     if (payload.txDigest !== undefined) offer.txDigest = payload.txDigest;
     if (payload.status !== undefined) offer.status = payload.status;
-    if (payload.chainOfferObjectId !== undefined) offer.chainOfferObjectId = payload.chainOfferObjectId;
+    if (payload.offerObjectId !== undefined) offer.offerObjectId = payload.offerObjectId;
+    if (payload.poolObjectId !== undefined) offer.poolObjectId = payload.poolObjectId;
     if (payload.seatsSold !== undefined) offer.seatsSold = payload.seatsSold;
-    if (payload.lastError !== undefined) offer.lastError = payload.lastError;
+    if (payload.errorReason !== undefined) offer.errorReason = payload.errorReason;
+
+    if (
+      payload.status === undefined
+      && (payload.txDigest || payload.offerObjectId || payload.poolObjectId)
+      && offer.status === OfferStatus.DRAFT
+    ) {
+      offer.status = OfferStatus.SUBMITTED;
+    }
+
+    const updated = await repository.save(offer);
+    res.json(updated);
+  }
+  catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/confirm", async (req, res, next) => {
+  try {
+    const repository = AppDataSource.getRepository(Offer);
+    const offer = await repository.findOneBy({ id: req.params.id });
+
+    if (!offer) {
+      res.status(404).json({ message: "Offer not found" });
+      return;
+    }
+
+    if (!offer.txDigest) {
+      res.status(400).json({ message: "Offer is missing txDigest" });
+      return;
+    }
+
+    let tx;
+    try {
+      tx = await getTransactionBlock(offer.rpcUrl || env.SUI_RPC_URL, offer.txDigest);
+    }
+    catch (error) {
+      offer.status = OfferStatus.FAILED;
+      offer.errorReason = error instanceof Error ? error.message : "Failed to fetch transaction";
+      const updated = await repository.save(offer);
+      res.status(400).json(updated);
+      return;
+    }
+
+    const verification = verifyOfferCreation({
+      tx,
+      packageId: offer.packageId || env.SUI_PACKAGE_ID,
+      sponsorAddress: offer.sponsorAddress,
+      offerObjectId: offer.offerObjectId,
+    });
+
+    if (!verification.ok) {
+      offer.status = OfferStatus.FAILED;
+      offer.errorReason = verification.errorReason || "Offer confirmation failed";
+      const updated = await repository.save(offer);
+      res.status(400).json(updated);
+      return;
+    }
+
+    offer.status = OfferStatus.CONFIRMED;
+    offer.errorReason = null;
+    if (!offer.packageId) offer.packageId = env.SUI_PACKAGE_ID;
+    if (!offer.chainNetwork) offer.chainNetwork = env.SUI_NETWORK;
+    if (!offer.rpcUrl) offer.rpcUrl = env.SUI_RPC_URL;
+    if (!offer.offerObjectId && verification.offerObjectId) {
+      offer.offerObjectId = verification.offerObjectId;
+    }
+    if (!offer.poolObjectId && verification.poolObjectId) {
+      offer.poolObjectId = verification.poolObjectId;
+    }
 
     const updated = await repository.save(offer);
     res.json(updated);

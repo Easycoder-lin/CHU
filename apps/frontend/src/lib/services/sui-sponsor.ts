@@ -8,8 +8,14 @@ import { apiRequest } from "@/lib/api";
 import { BackendOffer, mapBackendOffer } from "@/lib/services/backend-offers";
 import { CONTRACT_CONFIG } from "@/lib/contracts/config";
 
-type BackendOffer = {
-    id: string;
+type CreateOfferResponse = {
+    offerId: string;
+    chainConfig: {
+        packageId: string;
+        rpcUrl: string;
+        network: string;
+    };
+    draft: BackendOffer;
 };
 
 export class SuiSponsorService implements ISponsorService {
@@ -22,11 +28,12 @@ export class SuiSponsorService implements ISponsorService {
         return false;
     }
 
-    async stake(amount: number, signer?: TransactionSigner): Promise<string> {
+    async stake(amount: number, signer?: TransactionSigner, ownerAddress?: string): Promise<string> {
         if (!signer) throw new Error("Signer required for real transaction");
+        if (!ownerAddress) throw new Error("Wallet address required to stake");
 
         const tx = new Transaction();
-        buildStakePTB(tx, amount);
+        buildStakePTB(tx, amount, ownerAddress);
 
         const result = await signer.signAndExecuteTransaction({ transaction: tx });
         return result.digest;
@@ -36,7 +43,7 @@ export class SuiSponsorService implements ISponsorService {
         if (!signer) throw new Error("Signer required for real transaction");
         if (!params.sponsorAddress) throw new Error("Sponsor address required to publish offer");
 
-        const backendOffer = await apiRequest<BackendOffer>("/offers", {
+        const backendOffer = await apiRequest<CreateOfferResponse>("/offers", {
             method: "POST",
             body: JSON.stringify({
                 sponsorAddress: params.sponsorAddress,
@@ -69,6 +76,7 @@ export class SuiSponsorService implements ISponsorService {
                 pricePerSeat: params.pricePerSeat,
                 platformFeeBps: params.platformFeeBps ?? 0,
                 stakeToLock: params.stakeToLock ?? params.pricePerSeat,
+                ownerAddress: params.sponsorAddress,
             });
 
             const result = await signer.signAndExecuteTransaction({
@@ -77,23 +85,27 @@ export class SuiSponsorService implements ISponsorService {
             });
 
             const chainOfferObjectId = this.extractOfferObjectId(result?.objectChanges);
+            const poolObjectId = this.extractPoolObjectId(result?.objectChanges);
 
-            await apiRequest(`/offers/${backendOffer.id}/tx`, {
+            await apiRequest(`/offers/${backendOffer.offerId}/tx`, {
                 method: "PATCH",
                 body: JSON.stringify({
                     txDigest: result.digest,
-                    status: "OPEN",
-                    chainOfferObjectId,
+                    status: "SUBMITTED",
+                    offerObjectId: chainOfferObjectId,
+                    poolObjectId,
                 }),
             });
 
+            await this.confirmOfferWithRetry(backendOffer.offerId, 3);
+
             return result.digest;
         } catch (error) {
-            await apiRequest(`/offers/${backendOffer.id}/tx`, {
+            await apiRequest(`/offers/${backendOffer.offerId}/tx`, {
                 method: "PATCH",
                 body: JSON.stringify({
                     status: "FAILED",
-                    lastError: error instanceof Error ? error.message : String(error),
+                    errorReason: error instanceof Error ? error.message : String(error),
                 }),
             });
             throw error;
@@ -199,5 +211,30 @@ export class SuiSponsorService implements ISponsorService {
             (change) => change?.type === "created" && change?.objectType === offerType
         );
         return created?.objectId;
+    }
+
+    private extractPoolObjectId(objectChanges: any): string | undefined {
+        if (!Array.isArray(objectChanges)) return undefined;
+        const poolType = `${CONTRACT_CONFIG.PACKAGE_ID}::pool::Pool`;
+        const created = objectChanges.find(
+            (change) => change?.type === "created" && change?.objectType === poolType
+        );
+        return created?.objectId;
+    }
+
+    private async confirmOfferWithRetry(offerId: string, attempts: number): Promise<void> {
+        let lastError: Error | null = null;
+        for (let i = 0; i < attempts; i += 1) {
+            try {
+                await apiRequest(`/offers/${offerId}/confirm`, { method: "POST" });
+                return;
+            } catch (error) {
+                lastError = error instanceof Error ? error : new Error(String(error));
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+        }
+        if (lastError) {
+            throw lastError;
+        }
     }
 }

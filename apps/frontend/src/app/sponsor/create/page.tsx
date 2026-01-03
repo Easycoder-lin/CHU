@@ -25,7 +25,7 @@ import { PRODUCT_OPTIONS } from "@/lib/shared-constants"
 
 export default function SponsorCreateOfferPage() {
     const router = useRouter()
-    const { user, walletConnected } = useAuth()
+    const { walletConnected } = useAuth()
     const { publishOffer, isPublishing } = useSponsor()
 
     // Initialize with the first product in our shared list
@@ -69,7 +69,7 @@ export default function SponsorCreateOfferPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!walletConnected || !user?.isSponsor) return
+        if (!walletConnected) return
 
         try {
             await publishOffer({
@@ -89,18 +89,18 @@ export default function SponsorCreateOfferPage() {
         }
     }
 
-    if (!walletConnected || !user?.isSponsor) {
+    if (!walletConnected) {
         return (
             <div className="min-h-screen bg-[#FFF8F0] flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-gray-600 mb-4">
-                        You need to be a sponsor to create offers.
+                        Connect your wallet to create offers.
                     </p>
                     <Button
-                        onClick={() => router.push("/sponsor/stake")}
+                        onClick={() => router.push("/")}
                         className="px-6 py-3 h-auto bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] text-white rounded-xl font-semibold"
                     >
-                        Become a Sponsor
+                        Back to Home
                     </Button>
                 </div>
             </div>

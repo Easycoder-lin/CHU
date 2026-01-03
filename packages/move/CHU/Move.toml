@@ -21,11 +21,8 @@ edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 
 chu = "0x0"
 published-at = "0xedc20852fba479e27d10cb05ca415cbb608dcb4fddc1f0749fbfa3e4c93c71b7"
-sponsorBadge = ""
-offer = ""
-seatnft = ""
-platformVault = ""
-adminCap = ""
+platformVault = "0xc4e8f765ad2a8041f8898f4214b167b68a8ce385250ef02f586414eb0f15bf33"
+adminCap = "0xb40a98f2b75beac44dcbc8c40eab7b715b516b57737bce7d16bdc8ae9db1ff6f"
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
 # alice = "0xA11CE"

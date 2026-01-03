@@ -116,7 +116,7 @@ export class MockSponsorService implements ISponsorService {
         return true; // db.isSponsor(address);
     }
 
-    async stake(amount: number, signer?: TransactionSigner): Promise<string> {
+    async stake(amount: number, signer?: TransactionSigner, ownerAddress?: string): Promise<string> {
         await delay(2000);
         return "0xMockTxDigest_Stake_" + randomId();
     }

@@ -25,7 +25,10 @@ export const useSponsor = () => {
 
     const stakeMutation = useMutation({
         mutationFn: async (amount: number) => {
-            return await service.stake(amount, signer);
+            if (!account?.address) {
+                throw new Error("Wallet address required to stake");
+            }
+            return await service.stake(amount, signer, account.address);
         },
         onSuccess: () => {
             toast({ title: "Sponsor Staked!", description: "You are now a sponsor." });

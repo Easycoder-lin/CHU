@@ -146,14 +146,14 @@ module chu::offer {
         timestamp_ms: u64,
     }
 
-    // Create a new offer and lock sponsor stake.
+    // Create a new offer.
     public fun create_offer(
         badge: &mut sponsor::SponsorBadge,
         order_hash: vector<u8>,
         seat_cap: u64,
         price_per_seat: u64,
         platform_fee_bps: u64,
-        stake_to_lock: u64,
+        _stake_to_lock: u64,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): Offer {
@@ -163,7 +163,7 @@ module chu::offer {
             seat_cap,
             price_per_seat,
             platform_fee_bps,
-            stake_to_lock,
+            _stake_to_lock,
             clock::timestamp_ms(clock),
             ctx,
             true,
@@ -177,7 +177,7 @@ module chu::offer {
         seat_cap: u64,
         price_per_seat: u64,
         platform_fee_bps: u64,
-        stake_to_lock: u64,
+        _stake_to_lock: u64,
         clock: &clock::Clock,
         ctx: &mut tx_context::TxContext,
     ): Offer {
@@ -187,7 +187,7 @@ module chu::offer {
             seat_cap,
             price_per_seat,
             platform_fee_bps,
-            stake_to_lock,
+            _stake_to_lock,
             clock,
             ctx,
         )
@@ -201,7 +201,7 @@ module chu::offer {
         seat_cap: u64,
         price_per_seat: u64,
         platform_fee_bps: u64,
-        stake_to_lock: u64,
+        _stake_to_lock: u64,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
     ): Offer {
@@ -211,7 +211,7 @@ module chu::offer {
             seat_cap,
             price_per_seat,
             platform_fee_bps,
-            stake_to_lock,
+            _stake_to_lock,
             now_ms,
             ctx,
             false,
@@ -225,7 +225,7 @@ module chu::offer {
         seat_cap: u64,
         price_per_seat: u64,
         platform_fee_bps: u64,
-        stake_to_lock: u64,
+        _stake_to_lock: u64,
         now_ms: u64,
         ctx: &mut tx_context::TxContext,
         emit_events: bool,
@@ -234,11 +234,8 @@ module chu::offer {
         assert!(seat_cap > 0, EInvalidSeatCap);
         assert!(price_per_seat > 0, EInvalidPrice);
         assert!(platform_fee_bps <= 10_000, EInvalidFeeBps);
-        assert!(stake_to_lock > 0, EInvalidStake);
-
-        let available = sponsor::available_stake(badge);
-        assert!(available >= stake_to_lock, EInsufficientStake);
-        let stake_locked = sponsor::lock_stake(badge, stake_to_lock);
+        let stake_locked = balance::zero<SUI>();
+        let stake_locked_value = 0;
         let order_hash_len = vector::length(&order_hash);
         let offer = Offer {
             id: object::new(ctx),
@@ -265,7 +262,7 @@ module chu::offer {
                 seat_cap,
                 price_per_seat,
                 platform_fee_bps,
-                stake_locked: stake_to_lock,
+                stake_locked: stake_locked_value,
                 created_at_ms: now_ms,
                 order_hash_len,
             });

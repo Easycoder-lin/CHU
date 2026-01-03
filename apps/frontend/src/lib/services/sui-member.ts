@@ -48,7 +48,7 @@ export class SuiMemberService implements IMemberService {
     }
 
     async getMarketOffers(): Promise<Offer[]> {
-        const response = await apiRequest<{ data: BackendOffer[] }>("/offers?status=OPEN");
+        const response = await apiRequest<{ data: BackendOffer[] }>("/offers");
         return response.data.map(mapBackendOffer);
     }
 
@@ -63,7 +63,7 @@ export class SuiMemberService implements IMemberService {
                 method: "PATCH",
                 body: JSON.stringify({
                     status: "DISPUTE_OPEN",
-                    lastError: reason,
+                    errorReason: reason,
                 }),
             });
         }

@@ -11,16 +11,10 @@ import { Navbar } from "@/components/shared/navbar"
 
 export default function SponsorManagePage() {
     const router = useRouter()
-    const { user, walletConnected } = useAuth()
+    const { walletConnected } = useAuth()
     const { myOffers: offers } = useSponsor()
 
-    React.useEffect(() => {
-        if (walletConnected && user && !user.isSponsor) {
-            router.replace("/sponsor/stake")
-        }
-    }, [walletConnected, user, router])
-
-    if (!walletConnected || !user?.isSponsor) {
+    if (!walletConnected) {
         return null // Return null while redirecting or waiting for auth
     }
 

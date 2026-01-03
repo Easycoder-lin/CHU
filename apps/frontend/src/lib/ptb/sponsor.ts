@@ -13,23 +13,26 @@ type PublishOfferOnChainParams = {
     pricePerSeat: number;
     platformFeeBps: number;
     stakeToLock: number;
+    ownerAddress: string;
 };
 
 /**
  * 建構 "Sponsor 質押" 的交易
  */
-export const buildStakePTB = (tx: Transaction, amount: number | bigint) => {
+export const buildStakePTB = (tx: Transaction, amount: number | bigint, ownerAddress: string) => {
     // 假設合約需要傳入一個 Coin 物件
     // 這裡需要拆分 Coin，未來根據實際合約調整
     const [coin] = tx.splitCoins(tx.gas, [amount]);
 
-    tx.moveCall({
+    const badge = tx.moveCall({
         target: `${PACKAGE_ID}::${MODULE_SPONSOR}::stake_sponsor_entry`,
         arguments: [
             coin,
             tx.object('0x6') // 假設需要 Clock 或其他參數
         ],
     });
+
+    tx.transferObjects([badge], tx.pure.address(ownerAddress));
 
     return tx;
 };
@@ -38,7 +41,7 @@ export const buildStakePTB = (tx: Transaction, amount: number | bigint) => {
  * 建構 "發布方案" 的交易
  */
 export const buildPublishOfferPTB = (tx: Transaction, params: PublishOfferOnChainParams) => {
-    tx.moveCall({
+    const offer = tx.moveCall({
         target: `${PACKAGE_ID}::${MODULE_OFFER}::create_offer_entry`,
         arguments: [
             tx.object(params.sponsorBadgeId),
@@ -50,6 +53,8 @@ export const buildPublishOfferPTB = (tx: Transaction, params: PublishOfferOnChai
             tx.object('0x6') // Clock for creation time
         ],
     });
+
+    tx.transferObjects([offer], tx.pure.address(params.ownerAddress));
 
     return tx;
 };

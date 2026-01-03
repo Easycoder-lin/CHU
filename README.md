@@ -33,6 +33,11 @@ pnpm run db:migrate
 pnpm run dev
 ```
 
+Chain config (backend `.env`):
+- `SUI_RPC_URL` (Sui fullnode JSON-RPC URL)
+- `SUI_NETWORK` (e.g. `testnet`)
+- `SUI_PACKAGE_ID` (deployed packageId, fixed to `0xedc20852fba479e27d10cb05ca415cbb608dcb4fddc1f0749fbfa3e4c93c71b7`)
+
 Frontend:
 
 ```sh

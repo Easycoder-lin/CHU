@@ -9,6 +9,8 @@ import {
 export enum OfferStatus {
   DRAFT = "DRAFT",
   PENDING = "PENDING",
+  SUBMITTED = "SUBMITTED",
+  CONFIRMED = "CONFIRMED",
   OPEN = "OPEN",
   FULL = "FULL",
   CREDENTIALS_SUBMITTED = "CREDENTIALS_SUBMITTED",
@@ -65,17 +67,29 @@ export class Offer {
   @Column({ type: "int", default: 0 })
   stakeLocked!: number;
 
-  @Column({ type: "enum", enum: OfferStatus, default: OfferStatus.PENDING })
+  @Column({ type: "enum", enum: OfferStatus, default: OfferStatus.DRAFT })
   status!: OfferStatus;
 
   @Column({ type: "varchar", length: 255, nullable: true })
-  chainOfferObjectId?: string | null;
+  offerObjectId?: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  poolObjectId?: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  packageId!: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  chainNetwork!: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  rpcUrl!: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
   txDigest?: string | null;
 
   @Column({ type: "text", nullable: true })
-  lastError?: string | null;
+  errorReason?: string | null;
 
   @Column({ type: "timestamptz", nullable: true })
   fullAt?: Date | null;
